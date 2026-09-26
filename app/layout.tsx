@@ -16,7 +16,14 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: 'ABC do Pedal | Escola de Bicicleta do Zero',
-  description: 'Aprenda a andar de bicicleta do zero com segurança, acolhimento e sem traumas. Método exclusivo ABCDE para adultos, crianças e idosos.',
+  description: 'Escola profissional de bike especializada em ensinar adultos, idosos, jovens e crianças a andar de bicicleta do zero com segurança, acolhimento e metodologia estruturada.',
+  openGraph: {
+    title: 'ABC do Pedal | Escola de Bicicleta do Zero',
+    description: 'Escola profissional de bike especializada em ensinar adultos, idosos, jovens e crianças a andar de bicicleta do zero com segurança, acolhimento e metodologia estruturada.',
+    siteName: 'ABC do Pedal',
+    locale: 'pt_BR',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {

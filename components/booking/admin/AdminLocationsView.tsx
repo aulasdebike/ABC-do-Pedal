@@ -18,8 +18,10 @@ import {
   Check,
   ShieldCheck,
   Clock,
-  RotateCcw
+  RotateCcw,
+  Calculator
 } from 'lucide-react';
+import { CepPriceCalculator } from '@/components/calculator';
 import {
   MunicipalClassLocation,
   MunicipalLocationStatus,
@@ -46,6 +48,7 @@ export function AdminLocationsView({ onSelectMunicipalityForBooking }: AdminLoca
   const [selectedCityFilter, setSelectedCityFilter] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
+  const [showCalculator, setShowCalculator] = useState<boolean>(false);
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
 
   // Form state for adding new location
@@ -263,6 +266,20 @@ export function AdminLocationsView({ onSelectMunicipalityForBooking }: AdminLoca
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => setShowCalculator(!showCalculator)}
+            className={`px-3.5 py-2 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+              showCalculator
+                ? 'bg-pink-600/20 text-pink-300 border-pink-500 shadow-md shadow-pink-900/30'
+                : 'bg-slate-900 text-slate-300 hover:text-white border-slate-800'
+            }`}
+            title="Calcular preços e elegibilidade por CEP do aluno"
+          >
+            <Calculator className="w-4 h-4 text-pink-400" />
+            <span>Calculadora de CEP</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsAddingNew(!isAddingNew)}
             className="px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-md shadow-pink-900/30 transition-all cursor-pointer"
             id="btn-cadastrar-novo-local"
@@ -281,6 +298,16 @@ export function AdminLocationsView({ onSelectMunicipalityForBooking }: AdminLoca
           </button>
         </div>
       </div>
+
+      {/* Serverless CEP Price Calculator Panel (Expandable) */}
+      {showCalculator && (
+        <div className="animate-fadeIn">
+          <CepPriceCalculator
+            title="Calculadora de Preço por CEP de Aluno"
+            subtitle="Cálculo serverless seguro conectado à rota /api/preco para estimar valores e elegibilidade de atendimento."
+          />
+        </div>
+      )}
 
       {/* Explanatory Rule Box */}
       <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 text-xs text-slate-300 space-y-2">

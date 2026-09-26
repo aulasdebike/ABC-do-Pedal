@@ -23,6 +23,7 @@ import {
   subscribeToGalleryFirestore,
   getGalleryFromFirestore
 } from '@/lib/gallery-store';
+import { GalleryPagination } from './GalleryPagination';
 
 interface GaleriaVivaViewProps {
   onGoToBooking?: () => void;
@@ -39,21 +40,25 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
     return items.filter((item) => !item.hidden);
   }, [items]);
 
-  // Number of items displayed in initial mosaic batch (progressive loading)
-  const [displayCount, setDisplayCount] = useState<number>(12);
+  // Client-side pagination state (Zero browser reloads)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(12);
 
-  // Array of items currently assigned to the visible grid positions
-  const [displayedItems, setDisplayedItems] = useState<GalleryItem[]>(() => {
-    const initial = getStoredGalleryItems().filter((item) => !item.hidden);
-    return initial.slice(0, 12);
-  });
+  const totalItems = visibleItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  // Current page slice of items - purely client-side reactive derivation
+  const pagedItems = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return visibleItems.slice(start, start + pageSize);
+  }, [visibleItems, safePage, pageSize]);
 
   // Track hover state for items
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
 
   // Modal Lightbox state (permanecer dentro do próprio site, sem download e sem redirecionamento)
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
   // Audio unmute feedback state
   const [isAudioActiveOnHover, setIsAudioActiveOnHover] = useState<boolean>(false);
@@ -69,15 +74,7 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
         const map = new Map<string, GalleryItem>();
         prev.forEach((i) => map.set(i.id, i));
         fsItems.forEach((i) => map.set(i.id, i));
-        const merged = Array.from(map.values()).sort((a, b) => a.order - b.order);
-        return merged;
-      });
-      setDisplayedItems((prev) => {
-        if (prev.length === 0) {
-          const nonHidden = fsItems.filter((i) => !i.hidden);
-          return nonHidden.slice(0, 12);
-        }
-        return prev;
+        return Array.from(map.values()).sort((a, b) => a.order - b.order);
       });
     }).catch(() => {});
 
@@ -97,10 +94,6 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
       if (!isMounted) return;
       const latest = e.detail || getStoredGalleryItems();
       setItems(latest);
-      setDisplayedItems((prev) => {
-        const nonHidden = latest.filter((i: GalleryItem) => !i.hidden);
-        return nonHidden.slice(0, Math.max(12, prev.length));
-      });
     };
     window.addEventListener('abc_gallery_updated', handleLocalUpdate);
 
@@ -111,67 +104,31 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
     };
   }, []);
 
-  // Conteúdos trocando automaticamente de forma suave (Smooth dynamic swapping of mosaic tiles)
-  useEffect(() => {
-    if (visibleItems.length <= 6) return;
+  // Lightbox navigation across all visible items
+  const currentGlobalIndex = useMemo(() => {
+    if (!selectedItem) return -1;
+    return visibleItems.findIndex((i) => i.id === selectedItem.id);
+  }, [selectedItem, visibleItems]);
 
-    const swapInterval = setInterval(() => {
-      setDisplayedItems((currentDisplayed) => {
-        if (currentDisplayed.length === 0) return currentDisplayed;
-
-        // Find items in visible pool that are NOT currently displayed
-        const currentlyDisplayedIds = new Set(currentDisplayed.map((i) => i.id));
-        const availableCandidates = visibleItems.filter((i) => !currentlyDisplayedIds.has(i.id));
-
-        if (availableCandidates.length === 0) {
-          // If all are displayed, pick another from visibleItems to rotate
-          return currentDisplayed;
-        }
-
-        // Pick a random slot to swap, but NEVER swap the slot currently being hovered or opened in modal
-        const eligibleSlotIndices = currentDisplayed
-          .map((item, idx) => ({ item, idx }))
-          .filter(({ item }) => item.id !== hoveredItemId && item.id !== selectedItem?.id)
-          .map(({ idx }) => idx);
-
-        if (eligibleSlotIndices.length === 0) return currentDisplayed;
-
-        const targetSlotIndex = eligibleSlotIndices[Math.floor(Math.random() * eligibleSlotIndices.length)];
-        const replacementItem = availableCandidates[Math.floor(Math.random() * availableCandidates.length)];
-
-        const updated = [...currentDisplayed];
-        updated[targetSlotIndex] = replacementItem;
-        return updated;
-      });
-    }, 6000); // Swaps one tile every 6 seconds
-
-    return () => clearInterval(swapInterval);
-  }, [visibleItems, hoveredItemId, selectedItem]);
-
-  // Lightbox navigation
-  const handleOpenItem = (item: GalleryItem, index: number) => {
+  const handleOpenItem = (item: GalleryItem) => {
     setSelectedItem(item);
-    setSelectedIndex(index);
   };
 
   const handleCloseItem = () => {
     setSelectedItem(null);
-    setSelectedIndex(-1);
   };
 
   const handleNextItem = useCallback(() => {
-    if (displayedItems.length === 0) return;
-    const nextIdx = (selectedIndex + 1) % displayedItems.length;
-    setSelectedIndex(nextIdx);
-    setSelectedItem(displayedItems[nextIdx]);
-  }, [selectedIndex, displayedItems]);
+    if (visibleItems.length === 0 || currentGlobalIndex === -1) return;
+    const nextIdx = (currentGlobalIndex + 1) % visibleItems.length;
+    setSelectedItem(visibleItems[nextIdx]);
+  }, [currentGlobalIndex, visibleItems]);
 
   const handlePrevItem = useCallback(() => {
-    if (displayedItems.length === 0) return;
-    const prevIdx = (selectedIndex - 1 + displayedItems.length) % displayedItems.length;
-    setSelectedIndex(prevIdx);
-    setSelectedItem(displayedItems[prevIdx]);
-  }, [selectedIndex, displayedItems]);
+    if (visibleItems.length === 0 || currentGlobalIndex === -1) return;
+    const prevIdx = (currentGlobalIndex - 1 + visibleItems.length) % visibleItems.length;
+    setSelectedItem(visibleItems[prevIdx]);
+  }, [currentGlobalIndex, visibleItems]);
 
   // Keyboard navigation for modal
   useEffect(() => {
@@ -185,17 +142,8 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedItem, handleNextItem, handlePrevItem]);
 
-  // Handle progressive load more
-  const handleLoadMore = () => {
-    setDisplayCount((prev) => {
-      const nextCount = Math.min(prev + 6, visibleItems.length);
-      setDisplayedItems(visibleItems.slice(0, nextCount));
-      return nextCount;
-    });
-  };
-
   return (
-    <div className="min-h-[calc(100vh-5rem)] w-full py-4 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 relative select-none">
+    <div id="galeria-viva-top" className="min-h-[calc(100vh-5rem)] w-full py-4 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 relative select-none">
       
       {/* Discreet Header & Notification Banner */}
       <div className="w-[94vw] lg:w-[85vw] max-w-[1700px] mx-auto mb-4 sm:mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 px-2">
@@ -233,7 +181,7 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
       */}
       <div className="w-[94vw] lg:w-[85vw] max-w-[1700px] mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-[220px] sm:auto-rows-[250px] lg:auto-rows-[270px]">
-          {displayedItems.map((item, index) => {
+          {pagedItems.map((item, index) => {
             return (
               <MosaicTile
                 key={item.id}
@@ -250,22 +198,32 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
                     setIsAudioActiveOnHover(false);
                   }
                 }}
-                onClick={() => handleOpenItem(item, index)}
+                onClick={() => handleOpenItem(item)}
               />
             );
           })}
         </div>
 
-        {/* Progressive Loading Button if more items exist */}
-        {visibleItems.length > displayedItems.length && (
-          <div className="mt-8 text-center pb-6">
-            <button
-              onClick={handleLoadMore}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-xs sm:text-sm font-mono font-bold text-pink-400 hover:text-white border border-pink-500/30 hover:border-pink-500/60 shadow-lg transition-all cursor-pointer"
-            >
-              <RotateCw className="w-4 h-4" />
-              <span>Carregar Mais Momentos ({visibleItems.length - displayedItems.length} restantes)</span>
-            </button>
+        {/* Zero-Reload Client-Side Pagination */}
+        {totalItems > pageSize && (
+          <div className="mt-8 pt-4 border-t border-slate-900/80">
+            <GalleryPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={(page) => {
+                setCurrentPage(page);
+                if (typeof window !== 'undefined') {
+                  const el = document.getElementById('galeria-viva-top');
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              }}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
           </div>
         )}
       </div>
@@ -319,7 +277,7 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Previous item button */}
-              {displayedItems.length > 1 && (
+              {visibleItems.length > 1 && (
                 <button
                   type="button"
                   onClick={handlePrevItem}
@@ -331,7 +289,7 @@ export function GaleriaVivaView({ onGoToBooking }: GaleriaVivaViewProps) {
               )}
 
               {/* Next item button */}
-              {displayedItems.length > 1 && (
+              {visibleItems.length > 1 && (
                 <button
                   type="button"
                   onClick={handleNextItem}
