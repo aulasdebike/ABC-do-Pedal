@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>ABC do Pedal | Escola de Bicicleta do Zero</title>
+  <meta name="description" content="Aprenda a andar de bicicleta do zero com segurança, acolhimento e sem traumas. Método exclusivo ABCDE para adultos, crianças e idosos." />
+  <meta name="theme-color" content="#060608" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- OpenGraph / Social Cards -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ABC do Pedal | Escola de Bicicleta do Zero" />
+  <meta property="og:description" content="Método estruturado ABCDE para quem tem medo ou nunca pedalou. Aulas práticas com paciência e acolhimento." />
+  <meta property="og:site_name" content="ABC do Pedal" />
+  <meta property="og:image" content="/logo.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ABC do Pedal | Escola de Bicicleta do Zero" />
+  <meta name="twitter:description" content="Método estruturado ABCDE para quem tem medo ou nunca pedalou. Aulas práticas com paciência e acolhimento." />
+  <meta name="twitter:image" content="/logo.png" />
+
+  <!-- Preconnect and Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-dark: #060608;
+      --bg-surface: #0e0e14;
+      --bg-surface-hover: #161622;
+      --pink-primary: #ff007f;
+      --pink-dark: #db2777;
+      --pink-glow: rgba(255, 0, 127, 0.35);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-pink: rgba(255, 0, 127, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      text-rendering: optimizeLegibility;
+      line-height: 1.5;
+    }
+
+    /* Hardware Accelerated Smooth Scrolling */
+    .gpu-accel {
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    /* Ambient Neon Glow Orbs */
+    .ambient-glow {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+    .glow-1 {
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(255, 0, 127, 0.18) 0%, rgba(255, 0, 127, 0) 70%);
+    }
+    .glow-2 {
+      bottom: 10%;
+      right: -100px;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(219, 39, 119, 0.12) 0%, rgba(219, 39, 119, 0) 70%);
+    }
+
+    /* Header Nav */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(6, 6, 8, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nav-container {
+      width: 92%;
+      max-width: 1400px;
+      margin: 0 auto;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(255, 0, 127, 0.25), rgba(219, 39, 119, 0.08));
+      border: 1px solid var(--border-pink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px rgba(255, 0, 127, 0.25);
+    }
+
+    .brand-icon svg {
+      width: 24px;
+      height: 24px;
+      color: var(--pink-primary);
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    .brand-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: block;
+      font-weight: 500;
+    }
+
+    .desktop-nav {
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media (min-width: 960px) {
+      .desktop-nav {
+        display: flex;
+      }
+    }
+
+    .nav-link {
+      padding: 8px 14px;
+      border-radius: 10px;
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-cta {
+      background: linear-gradient(135deg, var(--pink-primary), var(--pink-dark));
+      color: #fff !important;
+      border-radius: 12px;
+      padding: 9px 18px;
+      box-shadow: 0 4px 15px rgba(255, 0, 127, 0.35);
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(255, 0, 127, 0.45);
+    }
+
+    /* Main Container */
+    main {
+      position: relative;
+      z-index: 10;
+      width: 92%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 0 80px;
+    }
+
+    /* Hybrid Banner & Environment Info */
+    .hybrid-banner {
+      background: rgba(14, 14, 20, 0.85);
+      border: 1px solid var(--border-pink);
+      border-radius: 20px;
+      padding: 16px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 36px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .hybrid-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      background-color: var(--pink-primary);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--pink-primary);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .hybrid-text-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .hybrid-text-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+    }
+
+    .btn-connect-next {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      background: rgba(255, 0, 127, 0.15);
+      border: 1px solid var(--border-pink);
+      color: #ff66b2;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+
+    .btn-connect-next:hover {
+      background: var(--pink-primary);
+      color: #fff;
+    }
+
+    /* Hero Section */
+    .hero-section {
+      text-align: center;
+      max-width: 820px;
+      margin: 0 auto 56px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 0, 127, 0.1);
+      border: 1px solid var(--border-pink);
+      color: #ff80bf;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .hero-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 38px;
+      line-height: 1.15;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 18px;
+      letter-spacing: -0.02em;
+    }
+
+    @media (min-width: 768px) {
+      .hero-title {
+        font-size: 54px;
+      }
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #ffffff 40%, #ff007f 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--pink-primary), var(--pink-dark));
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 10px 25px rgba(255, 0, 127, 0.4);
+      transition: all 0.25s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px rgba(255, 0, 127, 0.5);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: #cbd5e1;
+      padding: 14px 24px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    /* Galeria Viva Section (Optimized Fast Scrolling) */
+    .section-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .section-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Responsive Agile Media Grid */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+      gap: 14px;
+      will-change: transform;
+    }
+
+    @media (min-width: 640px) {
+      .gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .gallery-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+      }
+    }
+
+    .gallery-card {
+      position: relative;
+      border-radius: 18px;
+      overflow: hidden;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      aspect-ratio: 16 / 10;
+      cursor: pointer;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+      transform: translate3d(0, 0, 0);
+      contain: content;
+    }
+
+    .gallery-card:hover {
+      transform: translateY(-4px) scale(1.01);
+      border-color: var(--border-pink);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 0, 127, 0.15);
+      z-index: 10;
+    }
+
+    .gallery-card.span-2 {
+      grid-column: span 1;
+    }
+
+    @media (min-width: 768px) {
+      .gallery-card.span-2 {
+        grid-column: span 2;
+        grid-row: span 2;
+        aspect-ratio: 16 / 12;
+      }
+    }
+
+    .gallery-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.5s ease-out;
+    }
+
+    .gallery-card:hover img {
+      transform: scale(1.05);
+    }
+
+    .card-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      z-index: 2;
+    }
+
+    .card-badge svg {
+      width: 12px;
+      height: 12px;
+      color: var(--pink-primary);
+    }
+
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.15) 50%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 16px;
+      z-index: 2;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+
+    .card-caption {
+      font-size: 12px;
+      color: #cbd5e1;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Modal Lightbox */
+    .lightbox-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 4, 6, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: fadeIn 0.25s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .lightbox-content {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
+    }
+
+    .lightbox-media {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+
+    .lightbox-media iframe, .lightbox-media video, .lightbox-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border: none;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: background 0.2s;
+    }
+
+    .lightbox-close:hover {
+      background: var(--pink-primary);
+    }
+
+    .lightbox-info {
+      padding: 20px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    /* Mobile Bottom Navigation */
+    .mobile-bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(10, 10, 14, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      z-index: 50;
+    }
+
+    @media (min-width: 960px) {
+      .mobile-bottom-nav {
+        display: none;
+      }
+    }
+
+    .mobile-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .mobile-nav-item.active, .mobile-nav-item:hover {
+      color: var(--pink-primary);
+    }
+
+    .mobile-nav-item svg {
+      width: 20px;
+      height: 20px;
+    }
+  </style>
+</head>
+<body class="gpu-accel">
+
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="./" class="brand-logo" id="header-brand-link">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="5.5" cy="17.5" r="3.5" />
+            <circle cx="18.5" cy="17.5" r="3.5" />
+            <path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2" />
+          </svg>
+        </div>
+        <div>
+          <span class="brand-title">ABC do Pedal</span>
+          <span class="brand-tag">Escola de Bicicleta do Zero</span>
+        </div>
+      </a>
+
+      <!-- Desktop Nav -->
+      <nav class="desktop-nav">
+        <a href="./" class="nav-link" id="nav-home">Início</a>
+        <a href="./?view=perfis" class="nav-link" id="nav-perfis">Quem Ensinamos</a>
+        <a href="./?view=metodo" class="nav-link" id="nav-metodo">Método ABCDE</a>
+        <a href="./?view=planos" class="nav-link" id="nav-planos">Nossos Planos</a>
+        <a href="./?view=galeria" class="nav-link" id="nav-galeria">Galeria Viva</a>
+        <a href="./?view=aluno" class="nav-link" id="nav-aluno">Área do Aluno</a>
+        <a href="./?view=instrutor" class="nav-link" id="nav-instrutor">Portal do Instrutor</a>
+        <a href="./?view=agendamento" class="nav-link nav-cta" id="nav-cta-booking">Agendar Aula</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Hybrid Bridge Banner -->
+    <div class="hybrid-banner" id="hybrid-banner">
+      <div class="hybrid-status">
+        <span class="status-dot"></span>
+        <div>
+          <span class="hybrid-text-title" id="bridge-status-title">Ambiente Híbrido Ativo • HTML & Next.js</span>
+          <span class="hybrid-text-desc" id="bridge-status-desc">Identificando domínio e rotas de alta velocidade...</span>
+        </div>
+      </div>
+      <a href="./" id="bridge-switch-btn" class="btn-connect-next">
+        <span>Carregar Sistema Interativo Completo</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14"></path>
+          <path d="m12 5 7 7-7 7"></path>
+        </svg>
+      </a>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+        <span>Método Exclusivo ABC-DE • Paciência e Sem Traumas</span>
+      </div>
+
+      <h1 class="hero-title">
+        Aprenda a Andar de Bicicleta <span>do Zero Absoluto</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Metodologia acolhedora e estruturada para adultos, idosos, jovens e crianças. Conquiste seu equilíbrio e autonomia com segurança nos principais parques de São Paulo e ABC.
+      </p>
+
+      <div class="hero-actions">
+        <a href="./?view=agendamento" class="btn-primary" id="hero-btn-booking">
+          <span>Quero Agendar Minha Aula</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </a>
+
+        <a href="./?view=galeria" class="btn-secondary" id="hero-btn-gallery">
+          <span>Ver Galeria Viva</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+        </a>
+
+        <a href="https://wa.me/5511950438948?text=Ol%C3%A1%2C%20ABC%20do%20Pedal!%20Gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20as%20aulas%20de%20bicicleta." target="_blank" rel="noopener noreferrer" class="btn-secondary">
+          <span>WhatsApp Oficial</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Galeria Viva Showcase (High Performance Scrolling) -->
+    <section>
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Galeria Viva de Superações</h2>
+          <p class="section-desc">Mosaico real de alunos que superaram o receio e conquistaram a liberdade sobre duas rodas.</p>
+        </div>
+        <a href="./?view=galeria" class="btn-connect-next" id="see-all-gallery">
+          <span>Abrir Galeria Dinâmica</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Real Fast Media Grid -->
+      <div class="gallery-grid" id="gallery-mosaic">
+        <!-- Tile 1 (Video Principal - ABC do Pedal) -->
+        <div class="gallery-card span-2" onclick="openLightbox('video', 's8zY5s3V2rE', 'Primeiras pedaladas com autonomia', 'Aluna conquistando o equilíbrio no Parque do Ibirapuera.')">
+          <img src="https://img.youtube.com/vi/s8zY5s3V2rE/hqdefault.jpg" alt="Aula de bike no Ibirapuera" loading="lazy" decoding="async" />
+          <div class="card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+            <span>Vídeo Real</span>
+          </div>
+          <div class="card-overlay">
+            <h3 class="card-title">Primeiras Pedaladas com Autonomia</h3>
+            <p class="card-caption">Parque do Ibirapuera • Aluna superando o receio de 30 anos sem pedalar.</p>
+          </div>
+        </div>
+
+        <!-- Tile 2 (Foto) -->
+        <div class="gallery-card" onclick="openLightbox('photo', 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?q=80&w=800', 'Confiança e Postura Segura', 'Ajuste de bicicleta e método passo a passo.')">
+          <img src="https://images.unsplash.com/photo-1544197150-b99a580bb7a8?q=80&w=600" alt="Aula de bicicleta" loading="lazy" decoding="async" />
+          <div class="card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /></svg>
+            <span>Foto da Aula</span>
+          </div>
+          <div class="card-overlay">
+            <h3 class="card-title">Confiança e Postura Segura</h3>
+            <p class="card-caption">Equilíbrio progressivo sem rodinhas.</p>
+          </div>
+        </div>
+
+        <!-- Tile 3 (Video) -->
+        <div class="gallery-card" onclick="openLightbox('video', 'dQw4w9WgXcQ', 'Treino de Equilíbrio Dinâmico', 'Exercício de arrancada suave e frenagem controlada.')">
+          <img src="https://images.unsplash.com/photo-1517649763962-0c623266ddc0?q=80&w=600" alt="Treino dinâmico" loading="lazy" decoding="async" />
+          <div class="card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+            <span>Vídeo</span>
+          </div>
+          <div class="card-overlay">
+            <h3 class="card-title">Treino de Equilíbrio Dinâmico</h3>
+            <p class="card-caption">Arrancada suave e frenagem controlada.</p>
+          </div>
+        </div>
+
+        <!-- Tile 4 (Foto) -->
+        <div class="gallery-card" onclick="openLightbox('photo', 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=800', 'Superação no Parque Celso Daniel', 'Santo André • Aluno adulto pedalando sozinho.')">
+          <img src="https://images.unsplash.com/photo-1485965120184-e220f721d03e?q=80&w=600" alt="Parque Celso Daniel" loading="lazy" decoding="async" />
+          <div class="card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /></svg>
+            <span>Foto</span>
+          </div>
+          <div class="card-overlay">
+            <h3 class="card-title">Parque Celso Daniel</h3>
+            <p class="card-caption">Santo André • Aluno adulto pedalando sozinho.</p>
+          </div>
+        </div>
+
+        <!-- Tile 5 (Foto) -->
+        <div class="gallery-card" onclick="openLightbox('photo', 'https://images.unsplash.com/photo-1571068316344-75bc76f77890?q=80&w=800', 'Sorriso de Vitória', 'Superar o medo é um processo acolhedor e transformador.')">
+          <img src="https://images.unsplash.com/photo-1571068316344-75bc76f77890?q=80&w=600" alt="Sorriso de vitória" loading="lazy" decoding="async" />
+          <div class="card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /></svg>
+            <span>Foto</span>
+          </div>
+          <div class="card-overlay">
+            <h3 class="card-title">Sorriso de Vitória</h3>
+            <p class="card-caption">Superação sem traumas e com autonomia.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Lightbox Modal -->
+  <div class="lightbox-modal" id="lightbox">
+    <div class="lightbox-content">
+      <button class="lightbox-close" onclick="closeLightbox()" aria-label="Fechar ampliação">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <div class="lightbox-media" id="lightbox-media-container"></div>
+      <div class="lightbox-info">
+        <div>
+          <h4 id="lightbox-title" style="font-size: 16px; font-weight: 700; color: #fff;">Momento ABC do Pedal</h4>
+          <p id="lightbox-caption" style="font-size: 13px; color: #94a3b8; margin-top: 2px;">Experiência prática no parque.</p>
+        </div>
+        <a href="./?view=agendamento" class="btn-primary" style="padding: 10px 20px; font-size: 13px;">
+          <span>Agendar Aula Agora</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="mobile-bottom-nav">
+    <a href="./" class="mobile-nav-item active" id="mob-home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span>Início</span>
+    </a>
+    <a href="./?view=planos" class="mobile-nav-item" id="mob-planos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>
+      <span>Planos</span>
+    </a>
+    <a href="./?view=galeria" class="mobile-nav-item" id="mob-galeria">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <span>Galeria</span>
+    </a>
+    <a href="./?view=aluno" class="mobile-nav-item" id="mob-aluno">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Aluno</span>
+    </a>
+    <a href="./?view=agendamento" class="mobile-nav-item" style="color: var(--pink-primary);" id="mob-agendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Agendar</span>
+    </a>
+  </nav>
+
+  <!-- Hybrid Dynamic Router & Environment Bridge Script -->
+  <script>
+    (function initHybridBridge() {
+      const hostname = window.location.hostname;
+      const host = window.location.host;
+      const pathname = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+
+      const bridgeDesc = document.getElementById('bridge-status-desc');
+      const bridgeTitle = document.getElementById('bridge-status-title');
+      const bridgeSwitchBtn = document.getElementById('bridge-switch-btn');
+
+      // 1. Identify GitHub Pages vs Next.js Server
+      const isGitHubPages = hostname.includes('github.io');
+      const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
+      const isCloudRun = hostname.includes('run.app');
+
+      // Extract base path for GitHub Pages subfolders (e.g. /my-repo/)
+      let basePath = '';
+      const parts = pathname.split('/').filter(Boolean);
+      if (parts.length > 0 && /index\.html?$/i.test(parts[parts.length - 1])) {
+        parts.pop();
+      }
+      if (parts.length > 0 && isGitHubPages) {
+        basePath = '/' + parts.join('/');
+      }
+
+      // Compute target full Next.js entry URL
+      const targetNextUrl = (basePath || '') + '/' + (search || '') + (hash || '');
+
+      if (isGitHubPages) {
+        bridgeTitle.textContent = 'Ambiente GitHub Pages Ativo';
+        bridgeDesc.textContent = 'Domínio: ' + host + (basePath ? ' (' + basePath + ')' : '') + ' • Modo Estático Otimizado';
+        bridgeSwitchBtn.textContent = 'Abrir Sistema Completo';
+        bridgeSwitchBtn.href = targetNextUrl;
+      } else if (isCloudRun || isLocalhost) {
+        bridgeTitle.textContent = 'Ambiente Híbrido Conectado';
+        bridgeDesc.textContent = 'Host: ' + host + ' • Servidor Next.js Ativo com Rolagem 60fps';
+        bridgeSwitchBtn.textContent = 'Entrar no Sistema Interativo';
+        bridgeSwitchBtn.href = targetNextUrl;
+
+        // In active Next.js server, if someone directly loads index.html without search, seamless transition
+        if (pathname.endsWith('index.html') && !search && !hash) {
+          setTimeout(function() {
+            try {
+              window.location.replace(targetNextUrl);
+            } catch(e) {}
+          }, 800);
+        }
+      }
+
+      // Update internal navigation links with base path if necessary
+      document.querySelectorAll('a[href^="./"]').forEach(function(link) {
+        const originalHref = link.getAttribute('href');
+        const queryOrHash = originalHref.replace('./', '');
+        link.href = (basePath || '') + '/' + queryOrHash;
+      });
+
+    })();
+
+    // Lightbox Modal Controls
+    function openLightbox(type, source, title, caption) {
+      const modal = document.getElementById('lightbox');
+      const container = document.getElementById('lightbox-media-container');
+      const titleEl = document.getElementById('lightbox-title');
+      const captionEl = document.getElementById('lightbox-caption');
+
+      titleEl.textContent = title || 'Momento ABC do Pedal';
+      captionEl.textContent = caption || 'Aula prática com metodologia acolhedora.';
+
+      if (type === 'video') {
+        container.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + source + '?autoplay=1&mute=0&rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+      } else {
+        container.innerHTML = '<img src="' + source + '" alt="' + title + '" />';
+      }
+
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('lightbox');
+      const container = document.getElementById('lightbox-media-container');
+      modal.style.display = 'none';
+      container.innerHTML = '';
+      document.body.style.overflow = '';
+    }
+
+    // Close on backdrop click or ESC key
+    document.getElementById('lightbox').addEventListener('click', function(e) {
+      if (e.target === this) closeLightbox();
+    });
+
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+</body>
+</html>
