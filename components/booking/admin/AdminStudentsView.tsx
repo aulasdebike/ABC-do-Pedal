@@ -65,6 +65,8 @@ export function AdminStudentsView({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudentKey, setSelectedStudentKey] = useState<string | null>(null);
   const [isRegisteringStudent, setIsRegisteringStudent] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'pendentes' | 'concluidos'>('todos');
+  const [studentSubTab, setStudentSubTab] = useState<'resumo' | 'cadastrais' | 'agenda' | 'evolucao' | 'comprovantes' | 'certificado' | 'historico'>('resumo');
 
   // Form para cadastro manual rápido de aluno
   const [newFullName, setNewFullName] = useState('');
@@ -127,18 +129,49 @@ export function AdminStudentsView({
     return Array.from(studentsMap.values());
   }, [studentsMap]);
 
-  // Alunos filtrados pela busca
+  // Alunos filtrados pela busca e status
   const filteredStudents = useMemo(() => {
-    if (!searchTerm.trim()) return studentsList;
-    const term = searchTerm.toLowerCase();
-    return studentsList.filter(
-      (s) =>
-        s.fullName.toLowerCase().includes(term) ||
-        s.whatsapp.includes(term) ||
-        s.email.toLowerCase().includes(term) ||
-        s.cpf.includes(term)
-    );
-  }, [studentsList, searchTerm]);
+    let list = studentsList;
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      list = list.filter(
+        (s) =>
+          s.fullName.toLowerCase().includes(term) ||
+          s.whatsapp.includes(term) ||
+          s.email.toLowerCase().includes(term) ||
+          s.cpf.includes(term)
+      );
+    }
+    if (statusFilter === 'ativos') {
+      list = list.filter((s) => {
+        const st = s.latestBooking.status;
+        return (
+          st === 'agendamento-confirmado' ||
+          st === 'confirmado' ||
+          st === 'pagamento-confirmado' ||
+          Boolean(s.latestBooking.paymentConfirmedAt)
+        );
+      });
+    } else if (statusFilter === 'pendentes') {
+      list = list.filter((s) => {
+        const isPendingVoucher = isBookingVoucherPending(s.latestBooking);
+        const isAwaiting = isBookingAwaitingInstructorSchedule(s.latestBooking);
+        const st = s.latestBooking.status;
+        return (
+          isPendingVoucher ||
+          isAwaiting ||
+          st === 'aguardando-confirmacao-instrutor' ||
+          st === 'comprovante-enviado' ||
+          st === 'pre-agendado'
+        );
+      });
+    } else if (statusFilter === 'concluidos') {
+      list = list.filter((s) => {
+        return s.latestBooking.currentABCDE === 'E' || s.allBookings.some((b) => b.status === 'concluido');
+      });
+    }
+    return list;
+  }, [studentsList, searchTerm, statusFilter]);
 
   // Aluno atualmente selecionado para visualização detalhada
   const activeStudent = useMemo(() => {
@@ -239,30 +272,78 @@ export function AdminStudentsView({
   return (
     <div className="space-y-6 animate-in fade-in duration-300" id="admin-students-module">
       {/* Top Header & Barra de Busca / Cadastro */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-sm">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por nome, CPF ou WhatsApp..."
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-pink-500 transition-colors"
-          />
+      <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-sm space-y-3.5">
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nome, CPF ou WhatsApp..."
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-pink-500 transition-colors"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <span className="text-xs font-mono text-slate-400">
+              Total: <strong className="text-white">{studentsList.length}</strong> alunos
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsRegisteringStudent(true)}
+              className="px-4 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-md shadow-pink-950 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Cadastrar Aluno</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-          <span className="text-xs font-mono text-slate-400">
-            Total: <strong className="text-white">{studentsList.length}</strong> alunos
-          </span>
-          <button
-            type="button"
-            onClick={() => setIsRegisteringStudent(true)}
-            className="px-4 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-md shadow-pink-950 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Cadastrar Aluno</span>
-          </button>
+        {/* Filtros rápidos: Todos, Ativos, Pendentes, Concluídos */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-900 w-full">
+          {[
+            { id: 'todos', label: 'Todos', count: studentsList.length },
+            {
+              id: 'ativos',
+              label: 'Ativos',
+              count: studentsList.filter((s) => {
+                const st = s.latestBooking.status;
+                return st === 'agendamento-confirmado' || st === 'confirmado' || st === 'pagamento-confirmado' || Boolean(s.latestBooking.paymentConfirmedAt);
+              }).length
+            },
+            {
+              id: 'pendentes',
+              label: 'Pendentes',
+              count: studentsList.filter((s) => {
+                const isPendingVoucher = isBookingVoucherPending(s.latestBooking);
+                const isAwaiting = isBookingAwaitingInstructorSchedule(s.latestBooking);
+                const st = s.latestBooking.status;
+                return isPendingVoucher || isAwaiting || st === 'aguardando-confirmacao-instrutor' || st === 'comprovante-enviado' || st === 'pre-agendado';
+              }).length
+            },
+            {
+              id: 'concluidos',
+              label: 'Concluídos',
+              count: studentsList.filter((s) => s.latestBooking.currentABCDE === 'E' || s.allBookings.some((b) => b.status === 'concluido')).length
+            }
+          ].map((flt) => (
+            <button
+              key={flt.id}
+              type="button"
+              onClick={() => setStatusFilter(flt.id as any)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                statusFilter === flt.id
+                  ? 'bg-pink-600 text-white shadow-sm'
+                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+              }`}
+            >
+              <span>{flt.label}</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === flt.id ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                {flt.count}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -531,313 +612,524 @@ export function AdminStudentsView({
                 </div>
               </div>
 
-              {/* Dados Cadastrais e Biometria */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <User className="w-3.5 h-3.5 text-pink-400" />
-                  <span>Dados Cadastrais & Perfil Físico</span>
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                    <span className="text-slate-500 text-[10px] uppercase font-mono block">WhatsApp</span>
-                    <span className="font-mono text-slate-200 font-bold">{activeStudent.whatsapp || '-'}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                    <span className="text-slate-500 text-[10px] uppercase font-mono block">E-mail</span>
-                    <span className="text-slate-200 truncate block">{activeStudent.email || '-'}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                    <span className="text-slate-500 text-[10px] uppercase font-mono block">CPF</span>
-                    <span className="font-mono text-slate-200">{activeStudent.cpf || '-'}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                    <span className="text-slate-500 text-[10px] uppercase font-mono block">Nascimento / Idade</span>
-                    <span className="font-mono text-slate-200">
-                      {activeStudent.latestBooking.student?.birthDate
-                        ? `${formatDateBrazilian(activeStudent.latestBooking.student.birthDate)}`
-                        : '-'}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                    <span className="text-slate-500 text-[10px] uppercase font-mono block">Altura</span>
-                    <span className="font-mono text-slate-200">
-                      {activeStudent.latestBooking.student?.heightCm ? `${activeStudent.latestBooking.student.heightCm} cm` : '-'}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                    <span className="text-slate-500 text-[10px] uppercase font-mono block">Peso</span>
-                    <span className="font-mono text-slate-200">
-                      {activeStudent.latestBooking.student?.weightKg ? `${activeStudent.latestBooking.student.weightKg} kg` : '-'}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:col-span-2">
-                    <span className="text-slate-500 text-[10px] uppercase font-mono block">Nível Declarado</span>
-                    <span className="text-pink-400 font-medium">
-                      {activeStudent.latestBooking.currentABCDE ? `Etapa ${activeStudent.latestBooking.currentABCDE}` : 'Iniciante'}
-                    </span>
-                  </div>
-                </div>
+              {/* Sub-navegação da Ficha do Aluno */}
+              <div className="flex gap-1 overflow-x-auto pb-2 border-b border-slate-800 no-scrollbar">
+                {[
+                  { id: 'resumo', label: 'Resumo', icon: User },
+                  { id: 'cadastrais', label: 'Dados Cadastrais', icon: FileText },
+                  { id: 'agenda', label: 'Agenda & Local', icon: Calendar },
+                  { id: 'evolucao', label: 'Evolução', icon: Award },
+                  { id: 'comprovantes', label: 'Comprovantes', icon: FileCheck },
+                  { id: 'certificado', label: 'Certificado', icon: Sparkles },
+                  { id: 'historico', label: 'Histórico', icon: Clock }
+                ].map((st) => {
+                  const Icon = st.icon;
+                  const isActive = studentSubTab === st.id;
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => setStudentSubTab(st.id as any)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isActive
+                          ? 'bg-pink-600 text-white shadow-sm'
+                          : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                      }`}
+                    >
+                      <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      <span>{st.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-                {activeStudent.latestBooking.student?.hasSpecificNeeds && activeStudent.latestBooking.student?.specificNeedsDescription && (
-                  <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/30 text-xs space-y-1">
-                    <span className="text-[10px] font-mono text-amber-400 font-bold uppercase block">
-                      Restrições Físicas / Recomendações Médicas
-                    </span>
-                    <p className="text-slate-300">
-                      {activeStudent.latestBooking.student.specificNeedsDescription}
+              {/* ABA 1: RESUMO DO ALUNO */}
+              {studentSubTab === 'resumo' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-slate-500 block">Status Atual</span>
+                      <span className="text-xs font-bold text-pink-400 font-mono block">
+                        {activeStudent.latestBooking.status}
+                      </span>
+                      <span className="text-[11px] text-slate-400 block">
+                        {isBookingAwaitingInstructorSchedule(activeStudent.latestBooking)
+                          ? 'Aguardando agendamento'
+                          : activeStudent.latestBooking.slot?.date
+                          ? `${formatDateBrazilian(activeStudent.latestBooking.slot.date)} às ${activeStudent.latestBooking.slot.time}`
+                          : 'Sem data definida'}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-slate-500 block">Etapa Pedagógica</span>
+                      <span className="text-xs font-bold text-white font-mono block">
+                        Método ABCDE: Etapa {activeStudent.latestBooking.currentABCDE || 'A'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectBooking(activeStudent.latestBooking);
+                          onNavigate('evolucao');
+                        }}
+                        className="text-[11px] text-pink-400 hover:text-pink-300 underline font-mono cursor-pointer block"
+                      >
+                        Ver evolução detalhada →
+                      </button>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-slate-500 block">Total Investido</span>
+                      <span className="text-sm font-bold text-emerald-400 font-mono block">
+                        R$ {activeStudent.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-[11px] text-slate-400 block font-mono">
+                        {activeStudent.allBookings.length} {activeStudent.allBookings.length === 1 ? 'inscrição' : 'inscrições'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2 text-xs">
+                    <span className="text-slate-400 font-bold block">Local Previsto / Endereço:</span>
+                    <p className="text-slate-200">
+                      {activeStudent.latestBooking.assignedLocationName || activeStudent.latestBooking.location?.locationName || activeStudent.latestBooking.location?.address || 'Parque do Ibirapuera'}
                     </p>
                   </div>
-                )}
-              </div>
 
-              {/* Endereço / Local de Encontro e CEP */}
-              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-pink-400 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Local da Aula / Encontro</span>
-                  </span>
-                  {activeStudent.latestBooking.location?.cep && (
-                    <span className="px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 font-mono text-[10px]">
-                      CEP Pesquisado: {activeStudent.latestBooking.location.cep}
-                    </span>
-                  )}
-                </div>
-                <p className="text-slate-300 font-light">
-                  {activeStudent.latestBooking.location?.address || 'Parque do Ibirapuera — Portão 10'}
-                </p>
-              </div>
-
-              {/* Contratos e Termos Aceitos */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <Shield className="w-3.5 h-3.5 text-pink-400" />
-                  <span>Contratos & Termos Aceitos</span>
-                </h4>
-                <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-2 font-mono">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Termo de Ciência e Responsabilidade:</span>
-                    <span className="text-emerald-400 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Aceito
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Política de Reagendamento e Cancelamento:</span>
-                    <span className="text-emerald-400 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Aceito
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[11px] text-slate-500">
-                    <span>Data do Registro:</span>
-                    <span>
-                      {activeStudent.latestBooking.createdAt
-                        ? new Date(activeStudent.latestBooking.createdAt).toLocaleString('pt-BR')
-                        : 'No momento da inscrição'}
-                    </span>
+                  {/* Atalhos Rápidos */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setStudentSubTab('cadastrais')}
+                      className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-left text-xs space-y-1 transition-colors cursor-pointer"
+                    >
+                      <User className="w-3.5 h-3.5 text-pink-400" />
+                      <span className="block font-bold text-white">Dados Cadastrais</span>
+                      <span className="block text-[10px] text-slate-500">CPF, biometria e termos</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentSubTab('agenda')}
+                      className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-left text-xs space-y-1 transition-colors cursor-pointer"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-pink-400" />
+                      <span className="block font-bold text-white">Agenda & Local</span>
+                      <span className="block text-[10px] text-slate-500">Horários e ponto de encontro</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentSubTab('comprovantes')}
+                      className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-left text-xs space-y-1 transition-colors cursor-pointer"
+                    >
+                      <FileCheck className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="block font-bold text-white">Comprovantes</span>
+                      <span className="block text-[10px] text-slate-500">Validação e anexo PIX</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentSubTab('certificado')}
+                      className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-left text-xs space-y-1 transition-colors cursor-pointer"
+                    >
+                      <Award className="w-3.5 h-3.5 text-pink-400" />
+                      <span className="block font-bold text-white">Certificado</span>
+                      <span className="block text-[10px] text-slate-500">Visualizar ou emitir</span>
+                    </button>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Comprovante de Pagamento do Aluno */}
-              {(() => {
-                const voucherBooking =
-                  [...activeStudent.allBookings].reverse().find((b) => Boolean(getBookingVoucherUrl(b)) || isBookingVoucherPending(b)) ||
-                  activeStudent.latestBooking;
-                if (!voucherBooking) return null;
-                const vUrl = getBookingVoucherUrl(voucherBooking);
-                const isPending = isBookingVoucherPending(voucherBooking);
-                const isApproved = voucherBooking.status === 'agendamento-confirmado' || voucherBooking.status === 'pagamento-confirmado' || voucherBooking.status === 'confirmado';
-                const isReproved = voucherBooking.status === 'comprovante-reprovado' || voucherBooking.status === 'comprovante-rejeitado';
+              {/* ABA 2: DADOS CADASTRAIS & PERFIL FÍSICO */}
+              {studentSubTab === 'cadastrais' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-pink-400" />
+                      <span>Dados Cadastrais & Perfil Físico</span>
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                        <span className="text-slate-500 text-[10px] uppercase font-mono block">WhatsApp</span>
+                        <span className="font-mono text-slate-200 font-bold">{activeStudent.whatsapp || '-'}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                        <span className="text-slate-500 text-[10px] uppercase font-mono block">E-mail</span>
+                        <span className="text-slate-200 truncate block">{activeStudent.email || '-'}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                        <span className="text-slate-500 text-[10px] uppercase font-mono block">CPF</span>
+                        <span className="font-mono text-slate-200">{activeStudent.cpf || '-'}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                        <span className="text-slate-500 text-[10px] uppercase font-mono block">Nascimento / Idade</span>
+                        <span className="font-mono text-slate-200">
+                          {activeStudent.latestBooking.student?.birthDate
+                            ? `${formatDateBrazilian(activeStudent.latestBooking.student.birthDate)}`
+                            : '-'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                        <span className="text-slate-500 text-[10px] uppercase font-mono block">Altura</span>
+                        <span className="font-mono text-slate-200">
+                          {activeStudent.latestBooking.student?.heightCm ? `${activeStudent.latestBooking.student.heightCm} cm` : '-'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                        <span className="text-slate-500 text-[10px] uppercase font-mono block">Peso</span>
+                        <span className="font-mono text-slate-200">
+                          {activeStudent.latestBooking.student?.weightKg ? `${activeStudent.latestBooking.student.weightKg} kg` : '-'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:col-span-2">
+                        <span className="text-slate-500 text-[10px] uppercase font-mono block">Nível Declarado</span>
+                        <span className="text-pink-400 font-medium">
+                          {activeStudent.latestBooking.currentABCDE ? `Etapa ${activeStudent.latestBooking.currentABCDE}` : 'Iniciante'}
+                        </span>
+                      </div>
+                    </div>
 
-                return (
-                  <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700/80 space-y-3.5 shadow-md" id="student-voucher-card">
+                    {activeStudent.latestBooking.student?.hasSpecificNeeds && activeStudent.latestBooking.student?.specificNeedsDescription && (
+                      <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/30 text-xs space-y-1">
+                        <span className="text-[10px] font-mono text-amber-400 font-bold uppercase block">
+                          Restrições Físicas / Recomendações Médicas
+                        </span>
+                        <p className="text-slate-300">
+                          {activeStudent.latestBooking.student.specificNeedsDescription}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Contratos e Termos Aceitos */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <Shield className="w-3.5 h-3.5 text-pink-400" />
+                      <span>Contratos & Termos Aceitos</span>
+                    </h4>
+                    <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-2 font-mono">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Termo de Ciência e Responsabilidade:</span>
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Aceito
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Política de Reagendamento e Cancelamento:</span>
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Aceito
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[11px] text-slate-500">
+                        <span>Data do Registro:</span>
+                        <span>
+                          {activeStudent.latestBooking.createdAt
+                            ? new Date(activeStudent.latestBooking.createdAt).toLocaleString('pt-BR')
+                            : 'No momento da inscrição'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ABA 3: AGENDA & LOCAL */}
+              {studentSubTab === 'agenda' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                        <FileCheck className="w-4 h-4 text-amber-400" />
-                        <span>Comprovante de Pagamento da Contratação</span>
-                      </h4>
-                      {isPending ? (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-black animate-pulse flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                          COMPROVANTE EM ANÁLISE
-                        </span>
-                      ) : isApproved ? (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3 text-emerald-400" />
-                          COMPROVANTE APROVADO
-                        </span>
-                      ) : isReproved ? (
-                        <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
-                          <XCircle className="w-3 h-3 text-rose-400" />
-                          COMPROVANTE REPROVADO
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-mono font-medium">
-                          SEM COMPROVANTE
+                      <span className="font-bold text-pink-400 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>Local da Aula / Encontro</span>
+                      </span>
+                      {activeStudent.latestBooking.location?.cep && (
+                        <span className="px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 font-mono text-[10px]">
+                          CEP Pesquisado: {activeStudent.latestBooking.location.cep}
                         </span>
                       )}
                     </div>
+                    <p className="text-slate-300 font-light">
+                      {activeStudent.latestBooking.location?.address || 'Parque do Ibirapuera — Portão 10'}
+                    </p>
+                  </div>
 
-                    {/* Imagem do Comprovante */}
-                    {vUrl ? (
-                      <div className="space-y-1.5">
-                        <div
-                          onClick={() => onOpenVoucherModal(vUrl)}
-                          className="relative group cursor-pointer overflow-hidden rounded-xl border border-slate-700 bg-black/90 p-2 flex flex-col items-center justify-center transition-all hover:border-pink-500/60 shadow-inner max-h-56"
-                          title="Clique para conferir e ampliar comprovante"
-                        >
-                          <img
-                            src={vUrl}
-                            alt={`Comprovante de ${activeStudent.fullName}`}
-                            className="w-full max-h-48 object-contain rounded-lg transition-transform duration-200 group-hover:scale-[1.02]"
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-mono font-bold gap-1.5 backdrop-blur-[1px]">
-                            <Eye className="w-4 h-4 text-pink-400" />
-                            <span>Clique para Ampliar Comprovante</span>
-                          </div>
-                        </div>
-                        {voucherBooking.voucherFileName && (
-                          <p className="text-[10px] font-mono text-slate-400">
-                            Arquivo: <span className="text-slate-200">{voucherBooking.voucherFileName}</span>
+                  <div className="space-y-2">
+                    <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider block">
+                      Aulas Agendadas ({activeStudent.allBookings.length})
+                    </span>
+                    {activeStudent.allBookings.map((b) => (
+                      <div
+                        key={b.id}
+                        className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-white">
+                            {isBookingAwaitingInstructorSchedule(b)
+                              ? 'Aguardando agendamento pelo instrutor'
+                              : `${formatDateBrazilian(b.slot?.date || '')} às ${b.slot?.time || '09:00'}`}
                           </p>
-                        )}
+                          <p className="text-[11px] text-slate-400">
+                            {b.assignedLocationName || b.location?.locationName || 'Parque do Ibirapuera'}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-pink-300 font-bold">
+                          {b.status}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="p-4 rounded-xl bg-slate-950/60 border border-dashed border-slate-800 text-center space-y-2">
-                        <p className="text-xs text-slate-400 font-mono">
-                          Nenhum arquivo de comprovante anexado ainda para este agendamento.
-                        </p>
-                      </div>
-                    )}
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                    {/* Motivo de reprovação se aplicável */}
-                    {isReproved && (voucherBooking.rejectionReason || voucherBooking.notes) && (
-                      <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-xs text-rose-200">
-                        <span className="text-[10px] font-mono font-bold block text-rose-300 uppercase">Motivo da Reprovação:</span>
-                        {voucherBooking.rejectionReason || voucherBooking.notes}
-                      </div>
-                    )}
-
-                    {/* Anexar / Substituir comprovante manualmente pelo instrutor */}
-                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                      <label className="flex items-center gap-1.5 text-xs font-mono text-pink-400 hover:text-pink-300 cursor-pointer py-1 px-2.5 rounded-lg hover:bg-pink-500/10 border border-pink-500/30 transition-colors">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>{vUrl ? 'Substituir / Reanexar Comprovante' : 'Anexar Comprovante do Aluno'}</span>
-                        <input
-                          type="file"
-                          accept="image/*,.pdf"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            try {
-                              const compressed = await compressReceiptImage(file);
-                              if (!compressed) return;
-                              const updated = submitBookingVoucher(voucherBooking.id, {
-                                voucherUrl: compressed,
-                                voucherFileName: file.name
-                              }, voucherBooking);
-                              if (updated) {
-                                const latest = getStoredBookings();
-                                onUpdateBookings(latest);
-                              }
-                            } catch (err) {
-                              console.error('Erro ao anexar comprovante:', err);
-                            }
-                          }}
-                        />
-                      </label>
+              {/* ABA 4: EVOLUÇÃO PEDAGÓGICA */}
+              {studentSubTab === 'evolucao' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono font-bold text-pink-400 uppercase">
+                        Método ABCDE — Etapa Atual
+                      </span>
+                      <span className="px-3 py-1 rounded-lg bg-pink-500/20 text-pink-300 font-mono font-bold text-xs">
+                        Etapa {activeStudent.latestBooking.currentABCDE || 'A'}
+                      </span>
                     </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      O Método ABCDE avalia 20 habilidades motoras e pedagógicas divididas em 5 etapas progressivas.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectBooking(activeStudent.latestBooking);
+                        onNavigate('evolucao');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-mono text-xs font-bold flex items-center gap-2 shadow"
+                    >
+                      <Award className="w-4 h-4" />
+                      <span>Abrir Gestor de Evolução Completa</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                    {/* Botões de Ação: Aprovar ou Reprovar */}
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
+              {/* ABA 5: COMPROVANTES DE PAGAMENTO */}
+              {studentSubTab === 'comprovantes' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {(() => {
+                    const voucherBooking =
+                      [...activeStudent.allBookings].reverse().find((b) => Boolean(getBookingVoucherUrl(b)) || isBookingVoucherPending(b)) ||
+                      activeStudent.latestBooking;
+                    if (!voucherBooking) return null;
+                    const vUrl = getBookingVoucherUrl(voucherBooking);
+                    const isPending = isBookingVoucherPending(voucherBooking);
+                    const isApproved = voucherBooking.status === 'agendamento-confirmado' || voucherBooking.status === 'pagamento-confirmado' || voucherBooking.status === 'confirmado';
+                    const isReproved = voucherBooking.status === 'comprovante-reprovado' || voucherBooking.status === 'comprovante-rejeitado';
+
+                    return (
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700/80 space-y-3.5 shadow-md" id="student-voucher-card">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                            <FileCheck className="w-4 h-4 text-amber-400" />
+                            <span>Comprovante de Pagamento da Contratação</span>
+                          </h4>
+                          {isPending ? (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-black animate-pulse flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                              COMPROVANTE EM ANÁLISE
+                            </span>
+                          ) : isApproved ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3 text-emerald-400" />
+                              COMPROVANTE APROVADO
+                            </span>
+                          ) : isReproved ? (
+                            <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
+                              <XCircle className="w-3 h-3 text-rose-400" />
+                              COMPROVANTE REPROVADO
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-mono font-medium">
+                              SEM COMPROVANTE
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Imagem do Comprovante */}
+                        {vUrl ? (
+                          <div className="space-y-1.5">
+                            <div
+                              onClick={() => onOpenVoucherModal(vUrl)}
+                              className="relative group cursor-pointer overflow-hidden rounded-xl border border-slate-700 bg-black/90 p-2 flex flex-col items-center justify-center transition-all hover:border-pink-500/60 shadow-inner max-h-56"
+                              title="Clique para conferir e ampliar comprovante"
+                            >
+                              <img
+                                src={vUrl}
+                                alt={`Comprovante de ${activeStudent.fullName}`}
+                                className="w-full max-h-48 object-contain rounded-lg transition-transform duration-200 group-hover:scale-[1.02]"
+                              />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-mono font-bold gap-1.5 backdrop-blur-[1px]">
+                                <Eye className="w-4 h-4 text-pink-400" />
+                                <span>Clique para Ampliar Comprovante</span>
+                              </div>
+                            </div>
+                            {voucherBooking.voucherFileName && (
+                              <p className="text-[10px] font-mono text-slate-400">
+                                Arquivo: <span className="text-slate-200">{voucherBooking.voucherFileName}</span>
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-xl bg-slate-950/60 border border-dashed border-slate-800 text-center space-y-2">
+                            <p className="text-xs text-slate-400 font-mono">
+                              Nenhum arquivo de comprovante anexado ainda para este agendamento.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Motivo de reprovação se aplicável */}
+                        {isReproved && (voucherBooking.rejectionReason || voucherBooking.notes) && (
+                          <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-xs text-rose-200">
+                            <span className="text-[10px] font-mono font-bold block text-rose-300 uppercase">Motivo da Reprovação:</span>
+                            {voucherBooking.rejectionReason || voucherBooking.notes}
+                          </div>
+                        )}
+
+                        {/* Anexar / Substituir comprovante manualmente pelo instrutor */}
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                          <label className="flex items-center gap-1.5 text-xs font-mono text-pink-400 hover:text-pink-300 cursor-pointer py-1 px-2.5 rounded-lg hover:bg-pink-500/10 border border-pink-500/30 transition-colors">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{vUrl ? 'Substituir / Reanexar Comprovante' : 'Anexar Comprovante do Aluno'}</span>
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const compressed = await compressReceiptImage(file);
+                                  if (!compressed) return;
+                                  const updated = submitBookingVoucher(voucherBooking.id, {
+                                    voucherUrl: compressed,
+                                    voucherFileName: file.name
+                                  }, voucherBooking);
+                                  if (updated) {
+                                    const latest = getStoredBookings();
+                                    onUpdateBookings(latest);
+                                  }
+                                } catch (err) {
+                                  console.error('Erro ao anexar comprovante:', err);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        {/* Botões de Ação: Aprovar ou Reprovar */}
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => onApproveVoucher && onApproveVoucher(voucherBooking)}
+                            className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{isApproved ? 'Re-confirmar' : 'Aprovar Comprovante'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onRequestReproveVoucher && onRequestReproveVoucher(voucherBooking)}
+                            className="px-3.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Reprovar</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ABA 6: CERTIFICADO */}
+              {studentSubTab === 'certificado' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div className="flex items-center gap-2 text-pink-400">
+                      <Award className="w-5 h-5" />
+                      <h4 className="font-bold text-white text-sm">Certificado de Conquista Oficial</h4>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      O certificado oficial de conclusão do Método ABCDE é liberado quando o aluno atinge 100% das 20 habilidades motoras (nível Consolidado ou Autônomo).
+                    </p>
+                    <div className="pt-2">
                       <button
                         type="button"
-                        onClick={() => onApproveVoucher && onApproveVoucher(voucherBooking)}
-                        className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all cursor-pointer"
+                        onClick={() => onOpenCertificateModal(activeStudent.latestBooking)}
+                        className="px-4 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-mono text-xs font-bold flex items-center gap-2 shadow cursor-pointer"
                       >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>{isApproved ? 'Re-confirmar' : 'Aprovar Comprovante'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => onRequestReproveVoucher && onRequestReproveVoucher(voucherBooking)}
-                        className="px-3.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        <span>Reprovar</span>
+                        <Award className="w-4 h-4 text-amber-300" />
+                        <span>Visualizar / Abrir Certificado Oficial</span>
                       </button>
                     </div>
                   </div>
-                );
-              })()}
+                </div>
+              )}
 
-              {/* Histórico de Aulas e Agendamentos */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-pink-400" />
-                  <span>Histórico de Agendamentos ({activeStudent.allBookings.length})</span>
-                </h4>
-                <div className="space-y-2">
-                  {activeStudent.allBookings.map((b) => (
-                    <div
-                      key={b.id}
-                      className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs"
-                    >
-                      <div className="space-y-0.5">
-                        <div className="font-bold text-white flex items-center gap-2">
-                          <span>
-                            {isBookingAwaitingInstructorSchedule(b) ? (
-                              <span className="text-amber-300 font-bold">Aguardando confirmação do instrutor</span>
-                            ) : (
-                              `${formatDateBrazilian(b.slot?.date || '')} às ${b.slot?.time || '09:00'}`
+              {/* ABA 7: HISTÓRICO COMPLETO */}
+              {studentSubTab === 'historico' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-pink-400" />
+                      <span>Histórico de Agendamentos ({activeStudent.allBookings.length})</span>
+                    </h4>
+                    <div className="space-y-2">
+                      {activeStudent.allBookings.map((b) => (
+                        <div
+                          key={b.id}
+                          className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs"
+                        >
+                          <div className="space-y-0.5">
+                            <div className="font-bold text-white flex items-center gap-2">
+                              <span>
+                                {isBookingAwaitingInstructorSchedule(b) ? (
+                                  <span className="text-amber-300 font-bold">Aguardando confirmação do instrutor</span>
+                                ) : (
+                                  `${formatDateBrazilian(b.slot?.date || '')} às ${b.slot?.time || '09:00'}`
+                                )}
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                                {b.status}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 truncate">
+                              {b.assignedLocationName || b.location?.locationName || b.slot?.locationName || 'Parque do Ibirapuera'}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {Boolean(getBookingVoucherUrl(b)) && (
+                              <button
+                                type="button"
+                                onClick={() => onOpenVoucherModal(getBookingVoucherUrl(b)!)}
+                                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono flex items-center gap-1 cursor-pointer"
+                              >
+                                <Eye className="w-3 h-3 text-pink-400" />
+                                <span>Comprovante</span>
+                              </button>
                             )}
-                          </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                            {b.status}
-                          </span>
+                            <span className="font-mono text-emerald-400 font-bold">
+                              R$ {(b.price || 499).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-400 truncate">
-                          {b.assignedLocationName || b.location?.locationName || b.slot?.locationName || 'Parque do Ibirapuera'}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {Boolean(getBookingVoucherUrl(b)) && (
-                          <button
-                            type="button"
-                            onClick={() => onOpenVoucherModal(getBookingVoucherUrl(b)!)}
-                            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono flex items-center gap-1 cursor-pointer"
-                          >
-                            <Eye className="w-3 h-3 text-pink-400" />
-                            <span>Comprovante</span>
-                          </button>
-                        )}
-                        <span className="font-mono text-emerald-400 font-bold">
-                          R$ {(b.price || 499).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* Ações Rápidas de Certificação */}
-              <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => onOpenCertificateModal(activeStudent.latestBooking)}
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-mono text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors"
-                >
-                  <Award className="w-4 h-4 text-pink-400" />
-                  <span>Visualizar Certificado Oficial</span>
-                </button>
-
-                <div className="text-xs font-mono text-slate-400">
-                  Total Investido: <strong className="text-emerald-400">R$ {activeStudent.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                  <div className="pt-3 border-t border-slate-800 text-xs font-mono text-slate-400">
+                    Total Investido no Sistema: <strong className="text-emerald-400">R$ {activeStudent.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 text-xs">

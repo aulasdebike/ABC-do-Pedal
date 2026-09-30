@@ -50,7 +50,9 @@ import {
   CreditCard,
   TrendingUp,
   Package,
-  FileCheck
+  FileCheck,
+  Menu,
+  ChevronDown
 } from 'lucide-react';
 import { AdminDashboardView } from './admin/AdminDashboardView';
 import { AdminStudentsView } from './admin/AdminStudentsView';
@@ -61,6 +63,7 @@ import { AdminVouchersView } from './admin/AdminVouchersView';
 import { AdminLocationsView } from './admin/AdminLocationsView';
 import { AdminScheduleView } from './admin/AdminScheduleView';
 import { AdminGalleryView } from './admin/AdminGalleryView';
+import { AdminCertificatesView } from './admin/AdminCertificatesView';
 import {
   MunicipalClassLocation,
   getStoredMunicipalClassLocations,
@@ -269,20 +272,38 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
 
   type AdminTabType =
     | 'visao-geral'
-    | 'comprovantes-pendentes'
+    | 'agenda'
     | 'alunos'
     | 'evolucao'
-    | 'agenda'
+    | 'certificados'
+    | 'reservas'
     | 'locais'
+    | 'comunicacao'
+    | 'relatorios'
+    | 'configuracoes'
+    | 'comprovantes-pendentes'
     | 'automacao'
     | 'notificacoes'
-    | 'reservas'
     | 'financeiro'
     | 'planos'
-    | 'galeria'
-    | 'configuracoes';
+    | 'galeria';
 
   const [activeTab, setActiveTab] = useState<AdminTabType>('visao-geral');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  const handleNavigate = (tab: AdminTabType | string) => {
+    setIsMobileNavOpen(false);
+    if (tab === 'financeiro') {
+      setActiveTab('relatorios');
+    } else if (tab === 'automacao' || tab === 'notificacoes') {
+      setActiveTab('comunicacao');
+    } else if (tab === 'comprovantes-pendentes') {
+      setActiveTab('reservas');
+      setStatusFilter('comprovante-enviado');
+    } else {
+      setActiveTab(tab as AdminTabType);
+    }
+  };
   const [bookings, setBookings] = useState<BookingRecord[]>(() => {
     if (typeof window !== 'undefined') {
       return getStoredBookings();
@@ -1674,118 +1695,164 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
         </div>
       )}
 
-      {/* Menu Principal do Instrutor */}
-      <div className="flex gap-1.5 overflow-x-auto pb-2.5 mb-6 border-b border-slate-800/80 no-scrollbar">
-        {[
+      {/* Layout Responsivo do Instrutor: Sidebar no Desktop e Drawer no Mobile */}
+      {(() => {
+        const adminNavItems = [
+          { id: 'visao-geral', label: 'Visão geral', icon: LayoutDashboard },
+          { id: 'agenda', label: 'Agenda', icon: Calendar },
+          { id: 'alunos', label: 'Alunos', icon: Users, badge: `${uniqueStudentsCount}` },
+          { id: 'evolucao', label: 'Evolução pedagógica', icon: Award },
+          { id: 'certificados', label: 'Certificados', icon: Sparkles },
           {
-            id: 'visao-geral',
-            label: 'Visão Geral',
-            icon: LayoutDashboard
-          },
-          {
-            id: 'comprovantes-pendentes',
-            label: 'Comprovantes Pendentes',
-            icon: FileCheck,
+            id: 'reservas',
+            label: 'Reservas e pagamentos',
+            icon: CreditCard,
             badge: pendingVouchersCount > 0 ? `${pendingVouchersCount}` : undefined,
             badgeColor: 'bg-amber-500 text-slate-950 font-black animate-pulse'
           },
-          {
-            id: 'alunos',
-            label: 'Alunos',
-            icon: Users,
-            badge: `${uniqueStudentsCount}`
-          },
-          {
-            id: 'evolucao',
-            label: 'Evolução dos Alunos',
-            icon: Award
-          },
-          {
-            id: 'agenda',
-            label: 'Gestão de Horários',
-            icon: Calendar
-          },
-          {
-            id: 'locais',
-            label: 'Locais de Aula',
-            icon: MapPin,
-            badge: 'SBC • Santo André • SP',
-            badgeColor: 'bg-pink-950/80 text-pink-300 border border-pink-500/40'
-          },
-          {
-            id: 'automacao',
-            label: 'WhatsApp / Automação',
-            icon: MessageCircle
-          },
-          {
-            id: 'reservas',
-            label: 'Reservas e Pagamentos',
-            icon: CreditCard,
-            badge: pendingVouchersCount > 0 ? 'Pendente' : undefined,
-            badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-          },
-          {
-            id: 'financeiro',
-            label: 'Financeiro',
-            icon: DollarSign
-          },
-          {
-            id: 'planos',
-            label: 'Planos e Produtos',
-            icon: Package
-          },
-          {
-            id: 'galeria',
-            label: 'Galeria Viva',
-            icon: Sparkles
-          },
-          {
-            id: 'configuracoes',
-            label: 'Configurações',
-            icon: Settings2
-          }
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as AdminTabType)}
-              className={`px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
-                isActive
-                  ? 'bg-pink-600 text-white shadow-lg shadow-pink-950/40'
-                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-900 border border-slate-800/80'
-              }`}
-            >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-              <span>{tab.label}</span>
-              {tab.badge && (
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold leading-none ${
-                    tab.badgeColor || (isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300')
-                  }`}
-                >
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+          { id: 'locais', label: 'Locais de aula', icon: MapPin },
+          { id: 'comunicacao', label: 'Comunicação', icon: MessageCircle },
+          { id: 'relatorios', label: 'Relatórios', icon: DollarSign },
+          { id: 'configuracoes', label: 'Configurações', icon: Settings2 }
+        ];
 
-      {/* ========================================================= */}
-      {/* ABA: VISÃO GERAL (DASHBOARD INICIAL) */}
-      {/* ========================================================= */}
-      {activeTab === 'visao-geral' && (
-        <AdminDashboardView
-          bookings={bookings}
-          onNavigate={(tab) => setActiveTab(tab)}
-          onSelectBooking={(b) => setSelectedBooking(b)}
-          onApproveVoucher={(b) => handleConfirmPayment(b.id)}
-          onRequestReproveVoucher={(b) => setReprovingBooking(b)}
-          onOpenVoucherModal={(url) => setVoucherModalUrl(url)}
-        />
-      )}
+        const currentActiveItem = adminNavItems.find(
+          (n) =>
+            n.id === activeTab ||
+            (n.id === 'comunicacao' && (activeTab === 'automacao' || activeTab === 'notificacoes')) ||
+            (n.id === 'relatorios' && activeTab === 'financeiro')
+        );
+
+        return (
+          <div className="space-y-4">
+            {/* Toggle Mobile */}
+            <div className="block lg:hidden">
+              <button
+                type="button"
+                onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+                className="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs font-mono font-bold shadow-md cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Menu className="w-4 h-4 text-pink-400" />
+                  <span>Navegação: {currentActiveItem?.label || 'Menu do Instrutor'}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isMobileNavOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isMobileNavOpen && (
+                <div className="mt-2 p-2 rounded-2xl bg-slate-900 border border-slate-800 space-y-1 shadow-2xl">
+                  {adminNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive =
+                      activeTab === item.id ||
+                      (item.id === 'comunicacao' && (activeTab === 'automacao' || activeTab === 'notificacoes')) ||
+                      (item.id === 'relatorios' && activeTab === 'financeiro');
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleNavigate(item.id)}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold transition-all text-left cursor-pointer ${
+                          isActive ? 'bg-pink-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Icon className="w-4 h-4" />
+                          <span>{item.label}</span>
+                        </div>
+                        {item.badge && (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${item.badgeColor || 'bg-slate-800 text-slate-300'}`}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Layout Principal com Sidebar no Desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+              {/* Menu Lateral Desktop */}
+              <aside className="hidden lg:block lg:col-span-1 space-y-4">
+                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-xl space-y-1">
+                  <div className="px-3 py-2 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                    Menu do Instrutor
+                  </div>
+                  {adminNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive =
+                      activeTab === item.id ||
+                      (item.id === 'comunicacao' && (activeTab === 'automacao' || activeTab === 'notificacoes')) ||
+                      (item.id === 'relatorios' && activeTab === 'financeiro');
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleNavigate(item.id)}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer text-left ${
+                          isActive
+                            ? 'bg-pink-600 text-white shadow-md shadow-pink-950/50'
+                            : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                        {item.badge && (
+                          <span
+                            className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold shrink-0 ${
+                              item.badgeColor || (isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300')
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Card Informativo Operacional */}
+                <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs font-mono space-y-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Painel Operacional</span>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    ABC do Pedal • Gestão integrada de agenda, alunos, evolução pedagógica e faturamento.
+                  </p>
+                </div>
+              </aside>
+
+              {/* Área de Conteúdo */}
+              <div className="lg:col-span-3 space-y-6">
+                {/* Breadcrumbs */}
+                <div className="flex items-center gap-2 text-xs font-mono text-slate-400 pb-1">
+                  <span
+                    className="cursor-pointer hover:text-white"
+                    onClick={() => handleNavigate('visao-geral')}
+                  >
+                    Portal do Instrutor
+                  </span>
+                  <span>/</span>
+                  <span className="text-pink-400 font-bold capitalize">
+                    {currentActiveItem?.label || activeTab}
+                  </span>
+                </div>
+
+                {/* ========================================================= */}
+                {/* ABA: VISÃO GERAL (DASHBOARD INICIAL) */}
+                {/* ========================================================= */}
+                {activeTab === 'visao-geral' && (
+                  <AdminDashboardView
+                    bookings={bookings}
+                    onNavigate={handleNavigate}
+                    onSelectBooking={(b) => setSelectedBooking(b)}
+                    onApproveVoucher={(b) => handleConfirmPayment(b.id)}
+                    onRequestReproveVoucher={(b) => setReprovingBooking(b)}
+                    onOpenVoucherModal={(url) => setVoucherModalUrl(url)}
+                  />
+                )}
 
       {/* ========================================================= */}
       {/* ABA: COMPROVANTES PENDENTES */}
@@ -3699,9 +3766,23 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
       })()}
 
       {/* ========================================================= */}
+      {/* ABA: CERTIFICADOS */}
+      {/* ========================================================= */}
+      {activeTab === 'certificados' && (
+        <AdminCertificatesView
+          bookings={bookings}
+          onOpenCertificateModal={(b) => setAdminCertificateBooking(b)}
+          onNavigateToStudent={(b) => {
+            setSelectedBooking(b);
+            handleNavigate('evolucao');
+          }}
+        />
+      )}
+
+      {/* ========================================================= */}
       {/* TAB 4: DISPARADOR DE NOTIFICAÇÕES WHATSAPP */}
       {/* ========================================================= */}
-      {(activeTab === 'automacao' || activeTab === 'notificacoes') && (() => {
+      {(activeTab === 'automacao' || activeTab === 'notificacoes' || activeTab === 'comunicacao') && (() => {
         const currentNotificationBooking = selectedBooking || bookings[0] || null;
 
         if (!currentNotificationBooking) {
@@ -4166,9 +4247,9 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
       })()}
 
       {/* ========================================================= */}
-      {/* ABA: FINANCEIRO */}
+      {/* ABA: RELATÓRIOS / FINANCEIRO */}
       {/* ========================================================= */}
-      {activeTab === 'financeiro' && (
+      {(activeTab === 'financeiro' || activeTab === 'relatorios') && (
         <AdminFinancialView bookings={bookings} />
       )}
 
@@ -4178,7 +4259,7 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
       {activeTab === 'planos' && (
         <AdminPlansView
           bookings={bookings}
-          onNavigate={(tab) => setActiveTab(tab)}
+          onNavigate={handleNavigate}
         />
       )}
 
@@ -4207,6 +4288,12 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
           isSyncing={isSyncing}
         />
       )}
+
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal de Pré-visualização do Comprovante em Tela Cheia */}
       {voucherModalUrl && (
