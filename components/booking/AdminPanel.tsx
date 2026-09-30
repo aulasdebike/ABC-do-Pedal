@@ -65,7 +65,9 @@ import {
   MunicipalClassLocation,
   getStoredMunicipalClassLocations,
   getAvailableClassLocationsForCity,
-  getAllClassLocationsForCity
+  getAllClassLocationsForCity,
+  findOfficialLocationByNameOrContext,
+  normalizeSlotLocation
 } from '@/lib/locations-config';
 import {
   saveSingleSlotToFirestore,
@@ -1335,15 +1337,23 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
 
     // REGRA 7: Utilizar exatamente a data e o horário selecionados sem alterações de fuso
     const newId = `${newSlotDate}_${newSlotTime}`;
-    const newSlot: TimeSlot = {
+    const officialLoc = findOfficialLocationByNameOrContext(newSlotLocationName, newSlotCity);
+    const targetLocId = officialLoc?.locationId || (newSlotCity.includes('Bernardo') ? 'sbc_poliesportivo_kennedy' : (newSlotCity.includes('André') ? 'sa_paco_municipal' : 'ibirapuera'));
+    const rawSlot: TimeSlot = {
       id: newId,
       date: newSlotDate,
       time: newSlotTime,
       durationMinutes: 50,
       status: 'available',
-      locationName: newSlotLocationName?.trim() || undefined,
+      locationId: targetLocId,
+      locationName: officialLoc?.name || newSlotLocationName?.trim() || undefined,
+      city: officialLoc?.city || newSlotCity,
+      subRegion: officialLoc?.subRegion || newSlotCity,
+      region: officialLoc?.region || (newSlotCity.includes('São Paulo') ? 'sao_paulo' : 'abc_paulista'),
+      isKidsOnly: officialLoc?.isKidsOnly,
       createdAt: new Date().toISOString()
     };
+    const newSlot = normalizeSlotLocation(rawSlot);
 
     setIsSavingSlot(true);
     setAgendaFeedback(null);

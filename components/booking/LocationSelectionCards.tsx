@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { 
   MapPin, 
@@ -20,7 +20,8 @@ import {
   LocationConfigItem, 
   BookingSelectedLocation,
   INITIAL_REGIONS, 
-  getStoredLocations 
+  getStoredLocations,
+  normalizeLocationId
 } from '@/lib/locations-config';
 
 interface LocationSelectionCardsProps {
@@ -60,11 +61,28 @@ export function LocationSelectionCards({
   } | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
 
-  const allLocations = getStoredLocations();
+  const [locations, setLocations] = useState<LocationConfigItem[]>(() => {
+    return getStoredLocations();
+  });
+
+  useEffect(() => {
+    const handleLocationsUpdated = () => {
+      setLocations(getStoredLocations());
+    };
+    window.addEventListener('abc_official_locations_updated', handleLocationsLocationsListener);
+    window.addEventListener('abc_municipal_locations_updated', handleLocationsUpdated);
+    function handleLocationsLocationsListener() {
+      setLocations(getStoredLocations());
+    }
+    return () => {
+      window.removeEventListener('abc_official_locations_updated', handleLocationsLocationsListener);
+      window.removeEventListener('abc_municipal_locations_updated', handleLocationsUpdated);
+    };
+  }, []);
 
   // Filter configurable locations by region
-  const spLocations = allLocations.filter((l) => l.region === 'sao_paulo');
-  const abcLocations = allLocations.filter((l) => l.region === 'abc_paulista');
+  const spLocations = locations.filter((l) => l.region === 'sao_paulo' && l.status === 'disponivel');
+  const abcLocations = locations.filter((l) => l.region === 'abc_paulista' && l.isFixed && l.status === 'disponivel');
 
   // Format CEP (00000-000)
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,12 +204,14 @@ export function LocationSelectionCards({
   // Direct selection of a fixed location
   const handleSelectFixedLocation = (loc: LocationConfigItem, regionTitle: string) => {
     const fixedPrice = Number(loc.price);
+    const stableLocationId = loc.locationId || loc.id;
     const selected: BookingSelectedLocation = {
       region: loc.region,
       regionTitle,
-      locationId: loc.id,
+      locationId: normalizeLocationId(stableLocationId),
       locationName: loc.name,
       city: loc.city,
+      subRegion: loc.subRegion || loc.city,
       address: loc.address,
       price: fixedPrice,
       isFixed: loc.isFixed,
@@ -339,11 +359,14 @@ export function LocationSelectionCards({
               id="card-parque-do-ibirapuera"
               type="button"
               onClick={() => {
-                const ibira = spLocations.find((l) => l.id === 'ibirapuera') || {
+                const ibira = spLocations.find((l) => l.id === 'ibirapuera' || l.locationId === 'ibirapuera') || {
+                  locationId: 'ibirapuera',
                   id: 'ibirapuera',
                   region: 'sao_paulo' as const,
-                  name: 'Parque do Ibirapuera',
+                  subRegion: 'sao_paulo',
                   city: 'São Paulo',
+                  name: 'Parque do Ibirapuera',
+                  status: 'disponivel' as const,
                   price: 499.00,
                   isFixed: true,
                   fixedNote: 'Local fixo de atendimento da ABC do Pedal.',
@@ -519,7 +542,7 @@ export function LocationSelectionCards({
               >
                 <div className="absolute inset-0 z-0 overflow-hidden">
                   <Image
-                    src={loc.image}
+                    src={loc.image || '/locations/santo_andre.jpg'}
                     alt={loc.name}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"

@@ -156,7 +156,7 @@ export default function ABCDoPedalHome() {
                   <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(244,114,182,0.22)_0%,rgba(10,5,15,0.95)_75%)] pointer-events-none" />
                   <Image 
                     src="https://i.postimg.cc/xqLCZR63/Design-sem-nome-(3).png" 
-                    alt="ABC do Pedal Logo" 
+                    alt="ABC do Pedal - Escola de Bicicleta em São Paulo - Logo Oficial" 
                     width={64} 
                     height={64} 
                     className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.7)] transition-transform duration-300 group-hover:scale-105 relative z-10"
@@ -284,6 +284,11 @@ export default function ABCDoPedalHome() {
 
               {/* Title headlines with strict requested copies */}
               <div className="space-y-4 sm:space-y-5">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-400 text-xs sm:text-sm font-mono font-semibold uppercase tracking-wider">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>Aulas de Bicicleta em São Paulo • Parque Ibirapuera & Grande SP</span>
+                </div>
+
                 <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl 2xl:text-[3.5rem] font-black tracking-tight text-white leading-[1.1]" id="hero-headline">
                   “Nunca é tarde para <br className="hidden sm:inline" />
                   <span className="bg-gradient-to-r from-pink-500 via-pink-400 to-[#ff2a85] bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.15)]">
@@ -292,8 +297,7 @@ export default function ABCDoPedalHome() {
                 </h1>
                 
                 <h2 className="text-lg sm:text-xl xl:text-2xl text-slate-200 font-medium leading-relaxed" id="hero-subheadline">
-                  Muitas pessoas acreditaram por anos que não eram capazes… <br className="hidden sm:inline" />
-                  mas descobriram que o problema nunca foi elas — foi a falta do método certo.
+                  Aulas particulares para adultos, idosos e crianças aprenderem a andar de bicicleta do zero com segurança, paciência e metodologia exclusiva.
                 </h2>
 
                 <p className="text-base sm:text-lg xl:text-xl text-slate-300 leading-relaxed font-light">
@@ -411,9 +415,9 @@ export default function ABCDoPedalHome() {
             <span className="text-xs sm:text-sm font-mono tracking-widest uppercase text-pink-500 font-extrabold block">
               Atendimento Sob Medida
             </span>
-            <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight">
-              Para quem ensinamos?
-            </h3>
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight">
+              Para Quem Ensinamos a Andar de Bicicleta?
+            </h2>
             <p className="text-slate-300 max-w-3xl mx-auto font-light text-base sm:text-lg lg:text-xl leading-relaxed">
               Cada pessoa possui uma história, uma facilidade motora e medos diferentes. Escolha abaixo a aba que melhor se conecta com o seu momento atual:
             </p>
@@ -727,9 +731,9 @@ export default function ABCDoPedalHome() {
             <span className="text-xs sm:text-sm font-mono tracking-widest uppercase text-pink-500 font-extrabold block">
               Inovação Biomecânica
             </span>
-            <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight">
-              O Método ABC-DE do Pedal
-            </h3>
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight">
+              O Método ABC-DE para Aprender a Pedalar
+            </h2>
             <p className="text-slate-300 max-w-3xl mx-auto font-light text-base sm:text-lg lg:text-xl leading-relaxed">
               Desenvolvemos uma estrutura didática comprovada que respeita a biomecânica humana e a neuroplasticidade, garantindo resultados livres de traumas.
             </p>
@@ -1048,9 +1052,9 @@ export default function ABCDoPedalHome() {
                   Cuidado Acadêmico e Técnico
                 </span>
                 
-                <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight leading-tight">
-                  Apoio de Quem Entende de Verdade.
-                </h3>
+                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight leading-tight">
+                  Professor de Bicicleta: Apoio Profissional e Acolhimento
+                </h2>
               </div>
 
               <p className="text-slate-200 text-base sm:text-lg lg:text-xl font-light leading-relaxed">
@@ -1195,7 +1199,9 @@ export default function ABCDoPedalHome() {
           
           <div className="text-center space-y-4 mb-16 max-w-4xl mx-auto">
             <span className="text-xs sm:text-sm font-mono tracking-widest uppercase text-pink-500 font-extrabold block">Tire Suas Dúvidas</span>
-            <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black text-white">Perguntas Comuns de Quem Deseja Aprender</h3>
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black text-white">
+              Perguntas Frequentes sobre as Aulas de Bicicleta
+            </h2>
             <p className="text-slate-300 text-base sm:text-lg lg:text-xl font-light">Compilamos as principais perguntas de quem deseja ingressar e realizar o seu sonho.</p>
           </div>
 
@@ -1401,7 +1407,7 @@ export default function ABCDoPedalHome() {
                 <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(244,114,182,0.22)_0%,rgba(10,5,15,0.95)_75%)] pointer-events-none" />
                 <Image 
                   src="https://i.postimg.cc/xqLCZR63/Design-sem-nome-(3).png" 
-                  alt="ABC do Pedal" 
+                  alt="ABC do Pedal - Aulas para aprender a andar de bicicleta em São Paulo" 
                   width={96} 
                   height={96} 
                   className="w-full h-full object-contain drop-shadow-[0_0_12px_rgba(236,72,153,0.7)] relative z-10"
@@ -1414,10 +1420,10 @@ export default function ABCDoPedalHome() {
           <div className="space-y-4">
             
             {/* Specific required Phrase text */}
-            <h3 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight leading-tight" id="cta-final-heading">
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-white tracking-tight leading-tight" id="cta-final-heading">
               “Hoje pode ser o dia em que <br className="hidden sm:inline" />
               você finalmente começa.”
-            </h3>
+            </h2>
             
             {/* Specific requested subtitle */}
             <p className="text-pink-400 font-mono text-base sm:text-lg lg:text-xl font-bold tracking-wider" id="cta-final-subtext">
@@ -1467,7 +1473,7 @@ export default function ABCDoPedalHome() {
               <div className="w-full h-full rounded-full bg-[#0d0712] flex items-center justify-center p-0.5 overflow-hidden">
                 <Image 
                   src="https://i.postimg.cc/xqLCZR63/Design-sem-nome-(3).png" 
-                  alt="ABC do Pedal Logo" 
+                  alt="ABC do Pedal - Escola de Bicicleta em São Paulo - Logo Rodapé" 
                   width={36} 
                   height={36} 
                   className="w-full h-full object-contain"

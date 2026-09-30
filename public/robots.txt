@@ -1,0 +1,9 @@
+# Robots.txt for ABC do Pedal (https://www.abcdopedal.com.br)
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /painel/
+Disallow: /api/
+
+Sitemap: https://www.abcdopedal.com.br/sitemap.xml
+Host: https://www.abcdopedal.com.br

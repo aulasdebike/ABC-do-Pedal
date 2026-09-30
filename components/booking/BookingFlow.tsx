@@ -52,6 +52,7 @@ import {
   getWeekdayName,
   isSlotExpired,
   isSlotMatchingStudentLocation,
+  normalizeSlotLocation,
   generateWhatsAppNotificationUrl,
   generateCustomerToAbcWhatsAppUrl,
   generateContractDetailsText,
@@ -280,10 +281,11 @@ export function BookingFlow({ onGoToStudentPortal, onGoToAdmin }: BookingFlowPro
     let isMounted = true;
     const unsubscribe = subscribeToSlots((firestoreSlots) => {
       if (!isMounted || !firestoreSlots || firestoreSlots.length === 0) return;
-      const valid = firestoreSlots.filter((s) => !isSlotExpired(s.date, s.time));
+      const normalized = firestoreSlots.map(s => normalizeSlotLocation(s));
+      const valid = normalized.filter((s) => !isSlotExpired(s.date, s.time));
       if (valid.length > 0) {
         setSlots(valid);
-        saveStoredSlots(firestoreSlots);
+        saveStoredSlots(normalized);
       }
     });
 
@@ -325,6 +327,7 @@ export function BookingFlow({ onGoToStudentPortal, onGoToAdmin }: BookingFlowPro
     if (slot.locationName && selectedLocation) {
       const updatedLoc: BookingSelectedLocation = {
         ...selectedLocation,
+        locationId: slot.locationId || selectedLocation.locationId,
         locationName: slot.locationName
       };
       setSelectedLocation(updatedLoc);

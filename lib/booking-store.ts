@@ -7,8 +7,23 @@ import {
   deleteSingleSlotFromFirestore 
 } from './firebase';
 import type { BookingSelectedLocation } from './locations-config';
+import {
+  normalizeLocationId,
+  normalizeCityName,
+  resolveLocationIdFromSlot,
+  normalizeSlotLocation,
+  findOfficialLocationById,
+  findOfficialLocationByNameOrContext
+} from './locations-config';
 export type { BookingSelectedLocation } from './locations-config';
-export { isSpecialAbcPaymentCity, SPECIAL_ABC_PAYMENT_CITIES } from './locations-config';
+export {
+  isSpecialAbcPaymentCity,
+  SPECIAL_ABC_PAYMENT_CITIES,
+  normalizeLocationId,
+  normalizeCityName,
+  resolveLocationIdFromSlot,
+  normalizeSlotLocation
+} from './locations-config';
 
 export type AgeProfile = 'crianca_adolescente' | 'adulto' | 'idoso';
 
@@ -762,22 +777,22 @@ export function generateInitialSlots(): TimeSlot[] {
     bookedByStudentName?: string;
   }> = [
     // SÃO PAULO -> Ibirapuera
-    { dayOffset: 1, time: '08:00', region: 'sao_paulo', regionName: 'São Paulo', subRegion: 'Ibirapuera', city: 'São Paulo', locationId: 'ibirapuera', locationName: 'Parque Ibirapuera', status: 'available' },
-    { dayOffset: 1, time: '09:00', region: 'sao_paulo', regionName: 'São Paulo', subRegion: 'Ibirapuera', city: 'São Paulo', locationId: 'ibirapuera', locationName: 'Parque Ibirapuera', status: 'available' },
-    { dayOffset: 1, time: '10:00', region: 'sao_paulo', regionName: 'São Paulo', subRegion: 'Ibirapuera', city: 'São Paulo', locationId: 'ibirapuera', locationName: 'Parque Ibirapuera', status: 'available' },
+    { dayOffset: 1, time: '08:00', region: 'sao_paulo', regionName: 'São Paulo', subRegion: 'Ibirapuera', city: 'São Paulo', locationId: 'ibirapuera', locationName: 'Parque do Ibirapuera', status: 'available' },
+    { dayOffset: 1, time: '09:00', region: 'sao_paulo', regionName: 'São Paulo', subRegion: 'Ibirapuera', city: 'São Paulo', locationId: 'ibirapuera', locationName: 'Parque do Ibirapuera', status: 'available' },
+    { dayOffset: 1, time: '10:00', region: 'sao_paulo', regionName: 'São Paulo', subRegion: 'Ibirapuera', city: 'São Paulo', locationId: 'ibirapuera', locationName: 'Parque do Ibirapuera', status: 'available' },
 
     // ABC PAULISTA -> Santo André
-    { dayOffset: 2, time: '09:00', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'Santo André', city: 'Santo André', locationId: 'sa_paco_municipal', locationName: 'Paço Municipal', status: 'available' },
-    { dayOffset: 2, time: '10:00', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'Santo André', city: 'Santo André', locationId: 'sa_paco_municipal', locationName: 'Paço Municipal', status: 'available' },
+    { dayOffset: 2, time: '09:00', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'Santo André', city: 'Santo André', locationId: 'sa_paco_municipal', locationName: 'Paço Municipal de Santo André', status: 'available' },
+    { dayOffset: 2, time: '10:00', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'Santo André', city: 'Santo André', locationId: 'sa_paco_municipal', locationName: 'Paço Municipal de Santo André', status: 'available' },
     { dayOffset: 3, time: '14:00', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'Santo André', city: 'Santo André', locationId: 'sa_parque_celso_daniel', locationName: 'Parque Celso Daniel', isKidsOnly: true, status: 'available' },
 
     // ABC PAULISTA -> São Bernardo do Campo
     { dayOffset: 3, time: '08:30', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'São Bernardo do Campo', city: 'São Bernardo do Campo', locationId: 'sbc_poliesportivo_kennedy', locationName: 'Poliesportivo da Kennedy', status: 'available' },
     { dayOffset: 3, time: '09:30', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'São Bernardo do Campo', city: 'São Bernardo do Campo', locationId: 'sbc_poliesportivo_kennedy', locationName: 'Poliesportivo da Kennedy', status: 'available' },
-    { dayOffset: 4, time: '10:00', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'São Bernardo do Campo', city: 'São Bernardo do Campo', locationId: 'sbc_paco_municipal', locationName: 'Paço Municipal', status: 'available' },
+    { dayOffset: 4, time: '10:00', region: 'abc_paulista', regionName: 'ABC Paulista', subRegion: 'São Bernardo do Campo', city: 'São Bernardo do Campo', locationId: 'sbc_paco_municipal', locationName: 'Paço Municipal de São Bernardo do Campo', status: 'available' },
 
     // OUTRAS REGIÕES
-    { dayOffset: 5, time: '09:00', region: 'outras_localidades', regionName: 'Outras Regiões', subRegion: 'Outras localidades', city: 'Outras localidades', locationId: 'outras_localidades', locationName: 'Outras localidades (sob demanda)', status: 'available' }
+    { dayOffset: 5, time: '09:00', region: 'outras_localidades', regionName: 'Outras Regiões', subRegion: 'Outras localidades', city: 'Outras localidades', locationId: 'outras_localidades', locationName: 'Outras Regiões (sob demanda)', status: 'available' }
   ];
 
   presets.forEach((p) => {
@@ -887,53 +902,20 @@ export function getStoredSlots(): TimeSlot[] {
     // Filtrar horários vencidos no passado
     const validFuture = loaded.filter(s => !isSlotExpired(s.date, s.time));
 
-    // Normalização dos slots para garantir vinculação obrigatória a região, sub-região e município
+    // Normalização completa dos slots usando a fonte oficial da verdade (OfficialLocation)
     let hasLocationChanges = false;
     const normalized = validFuture.map((s) => {
-      let changed = false;
-      const updated: TimeSlot = { ...s };
-
-      if (!updated.region) {
-        changed = true;
-        const locId = (updated.locationId || '').toLowerCase();
-        const locName = (updated.locationName || '').toLowerCase();
-        if (locId.includes('santo') || locId.includes('bernardo') || locName.includes('andré') || locName.includes('bernardo') || locName.includes('kennedy')) {
-          updated.region = 'abc_paulista';
-          updated.regionName = 'ABC Paulista';
-        } else if (locId.includes('outras') || locName.includes('outras')) {
-          updated.region = 'outras_localidades';
-          updated.regionName = 'Outras Regiões';
-        } else {
-          updated.region = 'sao_paulo';
-          updated.regionName = 'São Paulo';
-        }
+      const norm = normalizeSlotLocation(s);
+      if (
+        norm.locationId !== s.locationId ||
+        norm.locationName !== s.locationName ||
+        norm.region !== s.region ||
+        norm.city !== s.city ||
+        norm.subRegion !== s.subRegion
+      ) {
+        hasLocationChanges = true;
       }
-
-      if (!updated.city || !updated.subRegion) {
-        changed = true;
-        const locName = (updated.locationName || '').toLowerCase();
-        const locId = (updated.locationId || '').toLowerCase();
-
-        if (locName.includes('bernardo') || locId.includes('bernardo') || locName.includes('kennedy')) {
-          updated.city = 'São Bernardo do Campo';
-          updated.subRegion = 'São Bernardo do Campo';
-        } else if (locName.includes('andré') || locName.includes('andre') || locId.includes('santo') || locName.includes('celso daniel')) {
-          updated.city = 'Santo André';
-          updated.subRegion = 'Santo André';
-          if (locName.includes('celso daniel')) {
-            updated.isKidsOnly = true;
-          }
-        } else if (updated.region === 'sao_paulo') {
-          updated.city = 'São Paulo';
-          updated.subRegion = locId.includes('ibira') || locName.includes('ibira') ? 'Ibirapuera' : 'Outras localidades';
-        } else {
-          updated.city = 'Outras localidades';
-          updated.subRegion = 'Outras localidades';
-        }
-      }
-
-      if (changed) hasLocationChanges = true;
-      return updated;
+      return norm;
     });
 
     if (hasLocationChanges || validFuture.length !== loaded.length) {
@@ -953,7 +935,8 @@ export function getStoredSlots(): TimeSlot[] {
 export function saveStoredSlots(slots: TimeSlot[]) {
   if (typeof window === 'undefined') return;
   try {
-    const sorted = [...slots].sort((a, b) => {
+    const normalized = slots.map((s) => normalizeSlotLocation(s));
+    const sorted = [...normalized].sort((a, b) => {
       const dateComp = a.date.localeCompare(b.date);
       if (dateComp !== 0) return dateComp;
       return a.time.localeCompare(b.time);
@@ -1137,11 +1120,17 @@ export function deleteInstructorSlot(slotId: string): { success: boolean; messag
 
 /**
  * DISTRIBUIÇÃO DOS HORÁRIOS:
- * A agenda exibida ao aluno deve mostrar somente os horários que o instrutor disponibilizou
- * para a região/município selecionado.
- * Exemplo:
- * ABC Paulista → Santo André → 09:00
- * Esse horário não deve aparecer para São Bernardo, São Paulo ou outras localidades.
+ * Sempre que o instrutor disponibilizar um horário para qualquer localidade cadastrada no painel,
+ * esse horário deve aparecer automaticamente como disponível para o aluno que selecionar a mesma
+ * região, município/sub-região e local no fluxo público.
+ * 
+ * Essa regra funciona para todos os locais atuais e futuros (Parque do Ibirapuera, Paço Municipal
+ * de Santo André, Parque Celso Daniel, Poliesportivo da Kennedy, Paço Municipal de São Bernardo do Campo,
+ * Parque Central e qualquer novo local cadastrado posteriormente), sem qualquer tratamento específico
+ * ou hardcoded para o Parque do Ibirapuera.
+ * 
+ * A associação é feita pelo identificador único e estável: locationId.
+ * O campo locationName é usado apenas para exibição e nunca como identificador principal.
  */
 export function isSlotMatchingStudentLocation(
   slot: TimeSlot,
@@ -1149,89 +1138,34 @@ export function isSlotMatchingStudentLocation(
 ): boolean {
   if (!selectedLocation) return true;
 
-  const targetRegion = selectedLocation.region;
-  const targetCity = (selectedLocation.city || '').toLowerCase().trim();
-  const targetLocId = (selectedLocation.locationId || '').toLowerCase().trim();
+  // 1. Resolve os locationIds canônicos tanto da escolha do aluno quanto do slot da agenda
+  const targetLocId = normalizeLocationId(selectedLocation.locationId);
+  const slotLocId = normalizeLocationId(resolveLocationIdFromSlot(slot));
 
-  // Se o slot possui região definida, deve coincidir exatamente
-  if (slot.region && slot.region !== targetRegion) {
+  // 2. REGRA PRINCIPAL: Correspondência direta por locationId único e estável
+  if (targetLocId && slotLocId) {
+    return targetLocId === slotLocId;
+  }
+
+  // 3. Região: Se o slot possui região definida e o aluno selecionou região diferente
+  if (slot.region && selectedLocation.region && slot.region !== selectedLocation.region) {
     return false;
   }
 
-  // 1. SÃO PAULO
-  if (targetRegion === 'sao_paulo') {
-    if (targetLocId === 'ibirapuera') {
-      // Aluno escolheu Ibirapuera: apenas horários de Ibirapuera
-      if (slot.subRegion && slot.subRegion.toLowerCase() !== 'ibirapuera') {
-        return false;
-      }
-      if (slot.locationId && slot.locationId !== 'ibirapuera' && slot.locationId !== 'sp_parque_ibirapuera') {
-        return false;
-      }
-      return true;
-    } else {
-      // Aluno escolheu Outras localidades (SP)
-      if (slot.subRegion && slot.subRegion.toLowerCase() === 'ibirapuera') {
-        return false;
-      }
-      return true;
-    }
+  // 4. Município / Cidade (fallback se algum dos lados não tiver locationId resolvido)
+  if (selectedLocation.city && slot.city) {
+    const normTargetCity = normalizeCityName(selectedLocation.city);
+    const normSlotCity = normalizeCityName(slot.city);
+    const citiesMatch = normTargetCity.includes(normSlotCity) || normSlotCity.includes(normTargetCity);
+    if (!citiesMatch) return false;
   }
 
-  // 2. ABC PAULISTA
-  if (targetRegion === 'abc_paulista') {
-    const isSantoAndreTarget = targetLocId === 'santo_andre' || targetCity.includes('santo andr');
-    const isSaoBernardoTarget = targetLocId === 'sao_bernardo' || targetCity.includes('bernardo');
-    const isOutrosAbcTarget = targetLocId.includes('outros') || targetCity.includes('outros');
-
-    const slotCityLower = (slot.city || '').toLowerCase();
-    const slotSubLower = (slot.subRegion || '').toLowerCase();
-    const slotLocLower = (slot.locationName || '').toLowerCase();
-
-    if (isSantoAndreTarget) {
-      // DEVE ser Santo André
-      const matchesSA =
-        slotSubLower.includes('santo andr') ||
-        slotCityLower.includes('santo andr') ||
-        slotLocLower.includes('celso daniel') ||
-        slotLocLower.includes('parque central') ||
-        (slotLocLower.includes('paço') && (slotCityLower.includes('andr') || slotSubLower.includes('andr') || !slotCityLower.includes('bernardo')));
-
-      // Se o slot pertencer explicitamente a São Bernardo ou outros, não exibe
-      if (slotSubLower.includes('bernardo') || slotCityLower.includes('bernardo') || slotLocLower.includes('kennedy')) {
-        return false;
-      }
-
-      return Boolean(matchesSA);
-    }
-
-    if (isSaoBernardoTarget) {
-      // DEVE ser São Bernardo do Campo
-      const matchesSBC =
-        slotSubLower.includes('bernardo') ||
-        slotCityLower.includes('bernardo') ||
-        slotLocLower.includes('kennedy') ||
-        (slotLocLower.includes('paço') && (slotCityLower.includes('bernardo') || slotSubLower.includes('bernardo')));
-
-      if (slotSubLower.includes('santo andr') || slotCityLower.includes('santo andr') || slotLocLower.includes('celso daniel') || slotLocLower.includes('parque central')) {
-        return false;
-      }
-
-      return Boolean(matchesSBC);
-    }
-
-    if (isOutrosAbcTarget) {
-      const matchesOutros = slotSubLower.includes('outros') || slotCityLower.includes('outros');
-      return Boolean(matchesOutros);
-    }
-  }
-
-  // 3. OUTRAS REGIÕES
-  if (targetRegion === 'outras_localidades') {
-    if (slot.region && slot.region !== 'outras_localidades') {
-      return false;
-    }
-    return true;
+  // 5. Sub-região (fallback)
+  if (selectedLocation.subRegion && slot.subRegion) {
+    const normTargetSub = normalizeCityName(selectedLocation.subRegion);
+    const normSlotSub = normalizeCityName(slot.subRegion);
+    const subMatch = normTargetSub.includes(normSlotSub) || normSlotSub.includes(normTargetSub);
+    if (!subMatch) return false;
   }
 
   return true;

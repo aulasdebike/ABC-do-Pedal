@@ -48,9 +48,15 @@ import {
   deleteSingleSlotFromFirestore
 } from '@/lib/firebase';
 import {
-  getStoredMunicipalClassLocations,
+  getStoredOfficialLocations,
+  findOfficialLocationById,
+  findOfficialLocationByNameOrContext,
+  normalizeLocationId,
+  resolveLocationIdFromSlot,
+  normalizeCityName,
   getAvailableClassLocationsForCity,
-  getAllClassLocationsForCity
+  getAllClassLocationsForCity,
+  OfficialLocation
 } from '@/lib/locations-config';
 
 interface AdminScheduleViewProps {
@@ -87,7 +93,8 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
   const [newTime, setNewTime] = useState<string>('09:00');
   const [newRegion, setNewRegion] = useState<SlotRegion>('abc_paulista');
   const [newSubRegion, setNewSubRegion] = useState<string>('Santo André');
-  const [newLocationName, setNewLocationName] = useState<string>('Paço Municipal');
+  const [newLocationId, setNewLocationId] = useState<string>('sa_paco_municipal');
+  const [newLocationName, setNewLocationName] = useState<string>('Paço Municipal de Santo André');
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Edit Slot State
@@ -96,6 +103,7 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
   const [editTime, setEditTime] = useState<string>('');
   const [editRegion, setEditRegion] = useState<SlotRegion>('abc_paulista');
   const [editSubRegion, setEditSubRegion] = useState<string>('');
+  const [editLocationId, setEditLocationId] = useState<string>('');
   const [editLocationName, setEditLocationName] = useState<string>('');
   const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
 
@@ -149,31 +157,34 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
     setNewRegion(reg);
     if (reg === 'sao_paulo') {
       setNewSubRegion('Ibirapuera');
-      setNewLocationName('Parque Ibirapuera');
+      setNewLocationId('ibirapuera');
+      setNewLocationName('Parque do Ibirapuera');
     } else if (reg === 'abc_paulista') {
       setNewSubRegion('Santo André');
-      setNewLocationName('Paço Municipal');
+      setNewLocationId('sa_paco_municipal');
+      setNewLocationName('Paço Municipal de Santo André');
     } else {
       setNewSubRegion('Outras localidades');
-      setNewLocationName('Outras localidades (sob demanda)');
+      setNewLocationId('outras_localidades');
+      setNewLocationName('Outras Regiões (sob demanda)');
     }
   };
 
   // Update default location when sub-region changes in Create Form
   const handleSubRegionChange = (sub: string) => {
     setNewSubRegion(sub);
-    if (sub === 'Santo André') {
-      const saLocs = getAvailableClassLocationsForCity('Santo André');
-      setNewLocationName(saLocs[0]?.name || 'Paço Municipal');
-    } else if (sub === 'São Bernardo do Campo') {
-      const sbcLocs = getAvailableClassLocationsForCity('São Bernardo do Campo');
-      setNewLocationName(sbcLocs[0]?.name || 'Poliesportivo da Kennedy');
-    } else if (sub === 'Ibirapuera') {
-      setNewLocationName('Parque Ibirapuera');
-    } else if (sub === 'Outros municípios') {
-      setNewLocationName('Outros municípios (ABC)');
-    } else {
-      setNewLocationName('Outras localidades');
+    const all = getStoredOfficialLocations();
+    const normSub = normalizeCityName(sub);
+    const forSub = all.filter((l) => {
+      if (l.region !== newRegion) return false;
+      const normCity = normalizeCityName(l.city);
+      const normLSub = normalizeCityName(l.subRegion);
+      return normCity.includes(normSub) || normSub.includes(normCity) || normLSub.includes(normSub) || normSub.includes(normLSub);
+    });
+    const firstAvail = forSub.find((l) => l.status === 'disponivel') || forSub[0];
+    if (firstAvail) {
+      setNewLocationId(firstAvail.locationId);
+      setNewLocationName(firstAvail.name);
     }
   };
 
@@ -182,148 +193,100 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
     setEditRegion(reg);
     if (reg === 'sao_paulo') {
       setEditSubRegion('Ibirapuera');
-      setEditLocationName('Parque Ibirapuera');
+      setEditLocationId('ibirapuera');
+      setEditLocationName('Parque do Ibirapuera');
     } else if (reg === 'abc_paulista') {
       setEditSubRegion('Santo André');
-      setEditLocationName('Paço Municipal');
+      setEditLocationId('sa_paco_municipal');
+      setEditLocationName('Paço Municipal de Santo André');
     } else {
       setEditSubRegion('Outras localidades');
-      setEditLocationName('Outras localidades (sob demanda)');
+      setEditLocationId('outras_localidades');
+      setEditLocationName('Outras Regiões (sob demanda)');
     }
   };
 
   const handleEditSubRegionChange = (sub: string) => {
     setEditSubRegion(sub);
-    if (sub === 'Santo André') {
-      const saLocs = getAvailableClassLocationsForCity('Santo André');
-      setEditLocationName(saLocs[0]?.name || 'Paço Municipal');
-    } else if (sub === 'São Bernardo do Campo') {
-      const sbcLocs = getAvailableClassLocationsForCity('São Bernardo do Campo');
-      setEditLocationName(sbcLocs[0]?.name || 'Poliesportivo da Kennedy');
-    } else if (sub === 'Ibirapuera') {
-      setEditLocationName('Parque Ibirapuera');
-    } else if (sub === 'Outros municípios') {
-      setEditLocationName('Outros municípios (ABC)');
-    } else {
-      setEditLocationName('Outras localidades');
+    const all = getStoredOfficialLocations();
+    const normSub = normalizeCityName(sub);
+    const forSub = all.filter((l) => {
+      if (l.region !== editRegion) return false;
+      const normCity = normalizeCityName(l.city);
+      const normLSub = normalizeCityName(l.subRegion);
+      return normCity.includes(normSub) || normSub.includes(normCity) || normLSub.includes(normSub) || normSub.includes(normLSub);
+    });
+    const firstAvail = forSub.find((l) => l.status === 'disponivel') || forSub[0];
+    if (firstAvail) {
+      setEditLocationId(firstAvail.locationId);
+      setEditLocationName(firstAvail.name);
     }
   };
 
-  // Dynamic location options for Create Form
+  // Dynamic location options for Create Form from the Single Source of Truth
   const availableLocationsForNew = useMemo(() => {
-    if (newRegion === 'sao_paulo') {
-      if (newSubRegion === 'Ibirapuera') {
-        return [
-          { id: 'sp_ibira', name: 'Parque Ibirapuera', note: 'Polo Oficial (Portão 10)', available: true }
-        ];
+    const all = getStoredOfficialLocations();
+    const filtered = all.filter((l) => {
+      if (l.region !== newRegion) return false;
+      if (newSubRegion) {
+        const normSub = normalizeCityName(newSubRegion);
+        const normCity = normalizeCityName(l.city);
+        const normLSub = normalizeCityName(l.subRegion);
+        const match =
+          normCity.includes(normSub) ||
+          normSub.includes(normCity) ||
+          normLSub.includes(normSub) ||
+          normSub.includes(normLSub);
+        if (!match) return false;
       }
-      return [
-        { id: 'sp_outras', name: 'Outras localidades', note: 'Sob consulta de endereço', available: true }
-      ];
-    }
+      return true;
+    });
 
-    if (newRegion === 'abc_paulista') {
-      if (newSubRegion === 'Santo André') {
-        const saAll = getAllClassLocationsForCity('Santo André');
-        if (saAll.length > 0) {
-          return saAll.map((loc) => ({
-            id: loc.id,
-            name: loc.name,
-            note: loc.restrictionNote || (loc.status === 'indisponivel' ? 'Inativo no cadastro' : ''),
-            available: loc.status === 'disponivel',
-            isKidsOnly: loc.isKidsOnly
-          }));
-        }
-        return [
-          { id: 'sa_paco', name: 'Paço Municipal', note: 'Disponível', available: true },
-          { id: 'sa_celso', name: 'Parque Celso Daniel', note: 'Exclusivo para crianças', available: true, isKidsOnly: true },
-          { id: 'sa_central', name: 'Parque Central', note: 'Inativo inicialmente', available: false }
-        ];
-      }
-
-      if (newSubRegion === 'São Bernardo do Campo') {
-        const sbcAll = getAllClassLocationsForCity('São Bernardo do Campo');
-        if (sbcAll.length > 0) {
-          return sbcAll.map((loc) => ({
-            id: loc.id,
-            name: loc.name,
-            note: loc.restrictionNote || (loc.status === 'indisponivel' ? 'Inativo no cadastro' : ''),
-            available: loc.status === 'disponivel'
-          }));
-        }
-        return [
-          { id: 'sbc_kennedy', name: 'Poliesportivo da Kennedy', note: 'Disponível', available: true },
-          { id: 'sbc_paco', name: 'Paço Municipal', note: 'Disponível', available: true }
-        ];
-      }
-
-      return [
-        { id: 'abc_outros', name: 'Outros municípios (ABC)', note: 'Atendimento Aprenda a Pedalar', available: true }
-      ];
-    }
-
-    return [
-      { id: 'outras_direto', name: 'Outras localidades (sob demanda)', note: 'Consulta por CEP', available: true }
-    ];
+    const targetList = filtered.length > 0 ? filtered : all.filter((l) => l.region === newRegion);
+    return targetList.map((loc) => ({
+      id: loc.locationId,
+      locationId: loc.locationId,
+      name: loc.name,
+      note: loc.restrictionNote || (loc.status === 'indisponivel' ? 'Inativo no cadastro' : ''),
+      available: loc.status === 'disponivel',
+      isKidsOnly: Boolean(loc.isKidsOnly),
+      city: loc.city,
+      subRegion: loc.subRegion
+    }));
   }, [newRegion, newSubRegion]);
 
-  // Dynamic location options for Edit Form
+  // Dynamic location options for Edit Form from the Single Source of Truth
   const availableLocationsForEdit = useMemo(() => {
-    if (editRegion === 'sao_paulo') {
-      if (editSubRegion === 'Ibirapuera') {
-        return [
-          { id: 'sp_ibira', name: 'Parque Ibirapuera', note: 'Polo Oficial', available: true }
-        ];
+    const all = getStoredOfficialLocations();
+    const filtered = all.filter((l) => {
+      if (l.region !== editRegion) return false;
+      if (editSubRegion) {
+        const normSub = normalizeCityName(editSubRegion);
+        const normCity = normalizeCityName(l.city);
+        const normLSub = normalizeCityName(l.subRegion);
+        const match =
+          normCity.includes(normSub) ||
+          normSub.includes(normCity) ||
+          normLSub.includes(normSub) ||
+          normSub.includes(normLSub);
+        if (!match) return false;
       }
-      return [
-        { id: 'sp_outras', name: 'Outras localidades', note: 'Sob consulta', available: true }
-      ];
-    }
+      return true;
+    });
 
-    if (editRegion === 'abc_paulista') {
-      if (editSubRegion === 'Santo André') {
-        const saAll = getAllClassLocationsForCity('Santo André');
-        if (saAll.length > 0) {
-          return saAll.map((loc) => ({
-            id: loc.id,
-            name: loc.name,
-            note: loc.restrictionNote || (loc.status === 'indisponivel' ? 'Inativo no cadastro' : ''),
-            available: loc.status === 'disponivel',
-            isKidsOnly: loc.isKidsOnly
-          }));
-        }
-        return [
-          { id: 'sa_paco', name: 'Paço Municipal', note: 'Disponível', available: true },
-          { id: 'sa_celso', name: 'Parque Celso Daniel', note: 'Exclusivo para crianças', available: true, isKidsOnly: true },
-          { id: 'sa_central', name: 'Parque Central', note: 'Inativo inicialmente', available: false }
-        ];
-      }
-
-      if (editSubRegion === 'São Bernardo do Campo') {
-        const sbcAll = getAllClassLocationsForCity('São Bernardo do Campo');
-        if (sbcAll.length > 0) {
-          return sbcAll.map((loc) => ({
-            id: loc.id,
-            name: loc.name,
-            note: loc.restrictionNote || (loc.status === 'indisponivel' ? 'Inativo no cadastro' : ''),
-            available: loc.status === 'disponivel'
-          }));
-        }
-        return [
-          { id: 'sbc_kennedy', name: 'Poliesportivo da Kennedy', note: 'Disponível', available: true },
-          { id: 'sbc_paco', name: 'Paço Municipal', note: 'Disponível', available: true }
-        ];
-      }
-
-      return [
-        { id: 'abc_outros', name: 'Outros municípios (ABC)', note: 'Atendimento Aprenda a Pedalar', available: true }
-      ];
-    }
-
-    return [
-      { id: 'outras_direto', name: 'Outras localidades (sob demanda)', note: 'Consulta por CEP', available: true }
-    ];
+    const targetList = filtered.length > 0 ? filtered : all.filter((l) => l.region === editRegion);
+    return targetList.map((loc) => ({
+      id: loc.locationId,
+      locationId: loc.locationId,
+      name: loc.name,
+      note: loc.restrictionNote || (loc.status === 'indisponivel' ? 'Inativo no cadastro' : ''),
+      available: loc.status === 'disponivel',
+      isKidsOnly: Boolean(loc.isKidsOnly),
+      city: loc.city,
+      subRegion: loc.subRegion
+    }));
   }, [editRegion, editSubRegion]);
+
 
   // Awaiting Students list (WhatsApp negotiation)
   const awaitingStudents = useMemo(() => {
@@ -508,22 +471,29 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
         outras_localidades: 'Outras Regiões'
       };
 
-      const isCelsoDaniel = newLocationName.toLowerCase().includes('celso daniel');
+      const officialLoc = findOfficialLocationById(newLocationId) || findOfficialLocationByNameOrContext(newLocationName, newSubRegion);
+      const targetLocationId = officialLoc?.locationId || normalizeLocationId(newLocationId) || 'sa_paco_municipal';
+      const targetLocationName = officialLoc?.name || newLocationName.trim();
+      const targetCity = officialLoc?.city || (newSubRegion.includes('André') ? 'Santo André' : (newSubRegion.includes('Bernardo') ? 'São Bernardo do Campo' : (newRegion === 'sao_paulo' ? 'São Paulo' : newSubRegion)));
+      const targetSubRegion = officialLoc?.subRegion || newSubRegion;
+      const targetRegion = officialLoc?.region || newRegion;
 
-      const slotId = `${newDate}_${newTime}_${newRegion}_${Date.now()}`;
+      const isCelsoDaniel = targetLocationId === 'sa_parque_celso_daniel' || targetLocationName.toLowerCase().includes('celso daniel');
+
+      const slotId = `${newDate}_${newTime}_${targetLocationId}_${Date.now()}`;
       const newSlot: TimeSlot = {
         id: slotId,
         date: newDate,
         time: newTime,
         durationMinutes: 50,
         status: 'available',
-        region: newRegion,
-        regionName: regionTitles[newRegion],
-        subRegion: newSubRegion,
-        city: newSubRegion.includes('André') ? 'Santo André' : (newSubRegion.includes('Bernardo') ? 'São Bernardo do Campo' : (newRegion === 'sao_paulo' ? 'São Paulo' : newSubRegion)),
-        locationName: newLocationName.trim(),
-        locationId: `loc_${Date.now()}`,
-        isKidsOnly: isCelsoDaniel,
+        region: targetRegion,
+        regionName: regionTitles[targetRegion],
+        subRegion: targetSubRegion,
+        city: targetCity,
+        locationName: targetLocationName,
+        locationId: targetLocationId,
+        isKidsOnly: isCelsoDaniel || Boolean(officialLoc?.isKidsOnly),
         createdAt: new Date().toISOString()
       };
 
@@ -551,7 +521,7 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
       setFeedbackBanner({
         type: 'success',
         title: 'HORÁRIO ABERTO COM SUCESSO',
-        message: `O horário ${newTime} (${regionTitles[newRegion]} → ${newSubRegion} → ${newLocationName}) foi aberto e já está disponível para os alunos da região selecionada!`
+        message: `O horário ${newTime} (${regionTitles[targetRegion]} → ${targetSubRegion} → ${targetLocationName}) foi aberto e já está disponível para os alunos da região selecionada!`
       });
     } catch (e: any) {
       console.error('Erro ao abrir horário:', e);
@@ -574,7 +544,9 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
     setEditTime(slot.time);
     setEditRegion(slot.region || 'abc_paulista');
     setEditSubRegion(slot.subRegion || slot.city || 'Santo André');
-    setEditLocationName(slot.locationName || 'Paço Municipal');
+    const normId = resolveLocationIdFromSlot(slot);
+    setEditLocationId(normId);
+    setEditLocationName(slot.locationName || 'Local');
   };
 
   // ==========================================
@@ -615,18 +587,26 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
         outras_localidades: 'Outras Regiões'
       };
 
-      const isCelsoDaniel = editLocationName.toLowerCase().includes('celso daniel');
+      const officialLoc = findOfficialLocationById(editLocationId) || findOfficialLocationByNameOrContext(editLocationName, editSubRegion);
+      const targetLocationId = officialLoc?.locationId || normalizeLocationId(editLocationId) || resolveLocationIdFromSlot(editingSlot);
+      const targetLocationName = officialLoc?.name || editLocationName.trim();
+      const targetCity = officialLoc?.city || (editSubRegion.includes('André') ? 'Santo André' : (editSubRegion.includes('Bernardo') ? 'São Bernardo do Campo' : (editRegion === 'sao_paulo' ? 'São Paulo' : editSubRegion)));
+      const targetSubRegion = officialLoc?.subRegion || editSubRegion;
+      const targetRegion = officialLoc?.region || editRegion;
+
+      const isCelsoDaniel = targetLocationId === 'sa_parque_celso_daniel' || targetLocationName.toLowerCase().includes('celso daniel');
 
       const updatedSlot: TimeSlot = {
         ...editingSlot,
         date: editDate,
         time: editTime,
-        region: editRegion,
-        regionName: regionTitles[editRegion],
-        subRegion: editSubRegion,
-        city: editSubRegion.includes('André') ? 'Santo André' : (editSubRegion.includes('Bernardo') ? 'São Bernardo do Campo' : (editRegion === 'sao_paulo' ? 'São Paulo' : editSubRegion)),
-        locationName: editLocationName.trim(),
-        isKidsOnly: isCelsoDaniel,
+        region: targetRegion,
+        regionName: regionTitles[targetRegion],
+        subRegion: targetSubRegion,
+        city: targetCity,
+        locationId: targetLocationId,
+        locationName: targetLocationName,
+        isKidsOnly: isCelsoDaniel || Boolean(officialLoc?.isKidsOnly),
         updatedAt: new Date().toISOString()
       };
 
@@ -659,9 +639,10 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
               ...currentBookings[bIdx].slot,
               date: editDate,
               time: editTime,
-              locationName: editLocationName.trim()
+              locationId: targetLocationId,
+              locationName: targetLocationName
             },
-            assignedLocationName: editLocationName.trim()
+            assignedLocationName: targetLocationName
           };
           saveStoredBookings(currentBookings);
         }
@@ -671,7 +652,7 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
       setFeedbackBanner({
         type: 'success',
         title: 'HORÁRIO ATUALIZADO',
-        message: `O horário foi atualizado para ${editTime} em ${formatDateBrazilian(editDate)} (${regionTitles[editRegion]} → ${editSubRegion} → ${editLocationName}).`
+        message: `O horário foi atualizado para ${editTime} em ${formatDateBrazilian(editDate)} (${regionTitles[targetRegion]} → ${targetSubRegion} → ${targetLocationName}).`
       });
     } catch (e: any) {
       console.error('Erro ao atualizar horário:', e);
@@ -1054,14 +1035,21 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
               5. Local da Aula:
             </label>
             <select
-              value={newLocationName}
-              onChange={(e) => setNewLocationName(e.target.value)}
+              value={newLocationId}
+              onChange={(e) => {
+                const chosenId = e.target.value;
+                setNewLocationId(chosenId);
+                const chosen = availableLocationsForNew.find((al) => al.locationId === chosenId || al.id === chosenId);
+                if (chosen) {
+                  setNewLocationName(chosen.name);
+                }
+              }}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-pink-500 font-mono cursor-pointer"
             >
               {availableLocationsForNew.map((al) => (
                 <option
-                  key={al.id}
-                  value={al.name}
+                  key={al.locationId}
+                  value={al.locationId}
                   disabled={!al.available}
                 >
                   {al.name} {al.note ? `— ${al.note}` : ''}
@@ -1486,12 +1474,19 @@ export function AdminScheduleView({ onScheduleAwaitingStudent }: AdminScheduleVi
               <div>
                 <label className="block text-slate-400 mb-1">Local da Aula:</label>
                 <select
-                  value={editLocationName}
-                  onChange={(e) => setEditLocationName(e.target.value)}
+                  value={editLocationId}
+                  onChange={(e) => {
+                    const chosenId = e.target.value;
+                    setEditLocationId(chosenId);
+                    const chosen = availableLocationsForEdit.find((al) => al.locationId === chosenId || al.id === chosenId);
+                    if (chosen) {
+                      setEditLocationName(chosen.name);
+                    }
+                  }}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-pink-500 cursor-pointer"
                 >
                   {availableLocationsForEdit.map((al) => (
-                    <option key={al.id} value={al.name} disabled={!al.available}>
+                    <option key={al.locationId} value={al.locationId} disabled={!al.available}>
                       {al.name} {al.note ? `— ${al.note}` : ''}
                     </option>
                   ))}
