@@ -23,6 +23,7 @@ export interface GalleryItem {
   aspectRatio?: GalleryAspectRatio;
   hidden: boolean;
   audioBlocked?: boolean; // Restrito: bloqueio total de áudio configurável somente pelo instrutor
+  showInTestimonials?: boolean; // Exibir nos depoimentos da Home (máx 5 vídeos)
   order: number;
   createdAt: string;
   updatedAt?: string;
@@ -133,6 +134,7 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     caption: 'Primeira vez tirando os pés do chão sem apoio e com confiança total.',
     aspectRatio: 'tall',
     hidden: false,
+    showInTestimonials: true,
     order: 1,
     createdAt: '2026-09-01T10:00:00Z',
   },
@@ -167,6 +169,7 @@ export const DEFAULT_GALLERY_ITEMS: GalleryItem[] = [
     caption: 'Coordenação e controle de guidão com postura relaxada.',
     aspectRatio: 'normal',
     hidden: false,
+    showInTestimonials: true,
     order: 4,
     createdAt: '2026-09-04T13:00:00Z',
   },
@@ -277,7 +280,14 @@ export function getStoredGalleryItems(): GalleryItem[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      // Garantir compatibilidade reversa de showInTestimonials
+      return parsed.map((item: GalleryItem) => {
+        if (item.showInTestimonials === undefined) {
+          const def = DEFAULT_GALLERY_ITEMS.find((d) => d.id === item.id);
+          return { ...item, showInTestimonials: def?.showInTestimonials ?? false };
+        }
+        return item;
+      });
     }
     return DEFAULT_GALLERY_ITEMS;
   } catch (err) {
@@ -327,6 +337,7 @@ export async function saveGalleryItemToFirestore(item: GalleryItem): Promise<voi
     if (item.caption) cleaned.caption = item.caption;
     if (item.aspectRatio) cleaned.aspectRatio = item.aspectRatio;
     if (item.audioBlocked !== undefined) cleaned.audioBlocked = item.audioBlocked;
+    if (item.showInTestimonials !== undefined) cleaned.showInTestimonials = item.showInTestimonials;
 
     await setDoc(docRef, cleaned, { merge: true });
   } catch (error) {

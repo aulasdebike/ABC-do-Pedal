@@ -34,7 +34,7 @@ import { BookingFlow } from '@/components/booking/BookingFlow';
 import { StudentPortal } from '@/components/booking/StudentPortal';
 import { AdminPanel } from '@/components/booking/AdminPanel';
 import { NossosPlanosView } from '@/components/plans/NossosPlanosView';
-import { GaleriaVivaView } from '@/components/gallery/GaleriaVivaView';
+import { GaleriaVivaView, HomeVideoTestimonials } from '@/components/gallery';
 
 export default function ABCDoPedalHome() {
   // Page Tab Navigation
@@ -392,6 +392,12 @@ export default function ABCDoPedalHome() {
           </div>
         </div>
       </section>
+
+      {/* SEÇÃO OBRIGATÓRIA: DEPOIMENTOS EM VÍDEO (REUTILIZANDO A ESTRUTURA DA GALERIA VIVA) */}
+      <HomeVideoTestimonials
+        onGoToGallery={() => handlePageChange('galeria')}
+        onGoToBooking={() => handlePageChange('agendamento')}
+      />
         </motion.div>
       )}
 

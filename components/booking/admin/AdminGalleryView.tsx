@@ -22,7 +22,9 @@ import {
   Layers,
   HelpCircle,
   VolumeX,
-  Volume2
+  Volume2,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { 
   GalleryItem, 
@@ -44,7 +46,7 @@ export function AdminGalleryView() {
   });
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'photo' | 'video' | 'hidden'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'photo' | 'video' | 'testimonials' | 'hidden'>('all');
 
   // Modal / Form state for Add/Edit
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,6 +59,7 @@ export function AdminGalleryView() {
   const [formAspectRatio, setFormAspectRatio] = useState<GalleryAspectRatio>('normal');
   const [formHidden, setFormHidden] = useState(false);
   const [formAudioBlocked, setFormAudioBlocked] = useState(false);
+  const [formShowInTestimonials, setFormShowInTestimonials] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -112,6 +115,7 @@ export function AdminGalleryView() {
     return items.filter((item) => {
       if (filterType === 'photo' && item.type !== 'photo') return false;
       if (filterType === 'video' && item.type !== 'video') return false;
+      if (filterType === 'testimonials' && (!item.showInTestimonials || item.type !== 'video' || item.hidden)) return false;
       if (filterType === 'hidden' && !item.hidden) return false;
 
       if (searchTerm.trim()) {
@@ -133,7 +137,8 @@ export function AdminGalleryView() {
     const videos = items.filter((i) => i.type === 'video').length;
     const hidden = items.filter((i) => i.hidden).length;
     const visible = total - hidden;
-    return { total, photos, videos, hidden, visible };
+    const testimonials = items.filter((i) => i.type === 'video' && !i.hidden && i.showInTestimonials).length;
+    return { total, photos, videos, hidden, visible, testimonials };
   }, [items]);
 
   // Open Create Modal
@@ -145,6 +150,7 @@ export function AdminGalleryView() {
     setFormAspectRatio('normal');
     setFormHidden(false);
     setFormAudioBlocked(false);
+    setFormShowInTestimonials(false);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -158,6 +164,7 @@ export function AdminGalleryView() {
     setFormAspectRatio(item.aspectRatio || 'normal');
     setFormHidden(item.hidden);
     setFormAudioBlocked(!!item.audioBlocked);
+    setFormShowInTestimonials(!!item.showInTestimonials);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -165,28 +172,45 @@ export function AdminGalleryView() {
   // Save / Update Item
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formUrl.trim()) {
-      setFormError('Informe o link da foto ou do vídeo do YouTube.');
+    const trimmedUrl = formUrl.trim();
+    if (!trimmedUrl) {
+      setFormError('Informe o link da foto ou do vídeo.');
       return;
+    }
+
+    // Validação formal de URL e formatos aceitos
+    try {
+      const parsed = new URL(trimmedUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        setFormError('Protocolo de link inválido. Utilize um endereço que inicie com http:// ou https://');
+        return;
+      }
+    } catch {
+      // Se não for URL absoluta com protocolo, checar se é um ID direto do YouTube de 11 caracteres
+      if (!/^[a-zA-Z0-9_-]{11}$/.test(trimmedUrl)) {
+        setFormError('Link inválido. Insira uma URL completa (ex: https://...) ou um link de vídeo do YouTube.');
+        return;
+      }
     }
 
     try {
       setIsSaving(true);
       setFormError(null);
 
-      const type = detectMediaType(formUrl);
-      const ytId = extractYouTubeId(formUrl);
+      const type = detectMediaType(trimmedUrl);
+      const ytId = extractYouTubeId(trimmedUrl);
 
       const itemToSave: GalleryItem = {
         id: editingItem ? editingItem.id : `gal_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         type,
-        url: formUrl.trim(),
+        url: trimmedUrl,
         youtubeId: ytId || undefined,
         title: formTitle.trim() || undefined,
         caption: formCaption.trim() || undefined,
         aspectRatio: formAspectRatio,
         hidden: formHidden,
         audioBlocked: type === 'video' ? formAudioBlocked : false,
+        showInTestimonials: type === 'video' ? formShowInTestimonials : false,
         order: editingItem ? editingItem.order : items.length + 1,
         createdAt: editingItem ? editingItem.createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -212,6 +236,55 @@ export function AdminGalleryView() {
       setFormError(err?.message || 'Erro ao salvar conteúdo.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Reordenação de Conteúdos (Mover para Cima ou para Baixo)
+  const handleMoveOrder = async (item: GalleryItem, direction: 'up' | 'down') => {
+    const currentIndex = items.findIndex((i) => i.id === item.id);
+    if (currentIndex === -1) return;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const newItems = [...items];
+    const temp = newItems[currentIndex];
+    newItems[currentIndex] = newItems[targetIndex];
+    newItems[targetIndex] = temp;
+
+    const reordered = newItems.map((it, idx) => ({
+      ...it,
+      order: idx + 1,
+      updatedAt: new Date().toISOString()
+    }));
+
+    setItems(reordered);
+    saveStoredGalleryItems(reordered);
+
+    try {
+      await Promise.all([
+        saveGalleryItemToFirestore(reordered[currentIndex]),
+        saveGalleryItemToFirestore(reordered[targetIndex])
+      ]);
+    } catch (fsErr) {
+      console.warn('Erro ao atualizar ordenação no Firestore:', fsErr);
+    }
+  };
+
+  // Toggle Show in Testimonials (Exibir nos depoimentos da Home)
+  const handleToggleShowInTestimonials = async (item: GalleryItem) => {
+    const updatedItem: GalleryItem = {
+      ...item,
+      showInTestimonials: !item.showInTestimonials,
+      updatedAt: new Date().toISOString()
+    };
+    const updatedList = items.map((i) => (i.id === item.id ? updatedItem : i));
+    setItems(updatedList);
+    saveStoredGalleryItems(updatedList);
+
+    try {
+      await saveGalleryItemToFirestore(updatedItem);
+    } catch (fsErr) {
+      console.warn('Erro ao atualizar showInTestimonials no Firestore:', fsErr);
     }
   };
 
@@ -331,6 +404,7 @@ export function AdminGalleryView() {
             { id: 'all', label: `Todos (${stats.total})` },
             { id: 'photo', label: `Fotos (${stats.photos})` },
             { id: 'video', label: `Vídeos (${stats.videos})` },
+            { id: 'testimonials', label: `Depoimentos Home (${stats.testimonials}/5)` },
             { id: 'hidden', label: `Ocultos (${stats.hidden})` },
           ].map((tab) => (
             <button
@@ -411,6 +485,13 @@ export function AdminGalleryView() {
                         <span>Mudo</span>
                       </span>
                     )}
+
+                    {isVideo && item.showInTestimonials && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-pink-600/90 text-white border border-pink-400/50 flex items-center gap-1 font-bold shadow-sm">
+                        <Sparkles className="w-2.5 h-2.5 text-pink-200" />
+                        <span>Home</span>
+                      </span>
+                    )}
                   </div>
 
                   {item.hidden && (
@@ -446,6 +527,37 @@ export function AdminGalleryView() {
                       {item.url}
                     </p>
                   </div>
+
+                  {/* Controle: Exibir nos depoimentos da Home */}
+                  {isVideo && (
+                    <div className="pt-2 border-t border-slate-900/90">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleShowInTestimonials(item)}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-mono transition-colors cursor-pointer border ${
+                          item.showInTestimonials
+                            ? 'bg-pink-600/20 text-pink-200 border-pink-500/50 hover:bg-pink-600/30'
+                            : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800'
+                        }`}
+                        title={item.showInTestimonials ? 'Clique para desativar dos depoimentos da Home' : 'Clique para ativar nos depoimentos da Home'}
+                      >
+                        <span className="flex items-center gap-2 font-bold text-[11px] text-left">
+                          <input
+                            type="checkbox"
+                            checked={!!item.showInTestimonials}
+                            readOnly
+                            className="rounded text-pink-600 focus:ring-0 cursor-pointer pointer-events-none w-3.5 h-3.5 shrink-0"
+                          />
+                          <span>Exibir nos depoimentos da Home</span>
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ml-1.5 ${
+                          item.showInTestimonials ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {item.showInTestimonials ? 'Ativado' : 'Desativado'}
+                        </span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Bottom Action Buttons */}
                   <div className="pt-2 border-t border-slate-900 flex items-center justify-between gap-2">
@@ -484,8 +596,28 @@ export function AdminGalleryView() {
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
+                        onClick={() => handleMoveOrder(item, 'up')}
+                        disabled={items.indexOf(item) === 0}
+                        title="Mover para cima na Galeria"
+                        className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleMoveOrder(item, 'down')}
+                        disabled={items.indexOf(item) === items.length - 1}
+                        title="Mover para baixo na Galeria"
+                        className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => handleOpenEdit(item)}
-                        title="Editar Informações"
+                        title="Editar Informações ou Substituir Mídia"
                         className="p-1.5 rounded-lg bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -710,6 +842,37 @@ export function AdminGalleryView() {
                     <span
                       className={`block w-4 h-4 rounded-full bg-white transition-transform ${
                         formAudioBlocked ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
+
+              {/* Exibir nos depoimentos da Home Switch */}
+              {detectedType === 'video' && (
+                <div className="pt-3 flex items-center justify-between border-t border-slate-800 bg-pink-500/5 p-3 rounded-xl border border-pink-500/20">
+                  <div className="pr-4">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-pink-400" />
+                      <span className="font-mono font-bold text-pink-200 block text-xs">
+                        Exibir nos depoimentos da Home
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-300 block mt-0.5 leading-relaxed">
+                      Quando ativado, este vídeo será exibido na nova seção de depoimentos da página inicial (máximo de 5 vídeos na Home).
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormShowInTestimonials(!formShowInTestimonials)}
+                    className={`w-11 h-6 shrink-0 rounded-full transition-colors relative cursor-pointer ${
+                      formShowInTestimonials ? 'bg-pink-600' : 'bg-slate-800'
+                    }`}
+                    aria-label="Exibir nos depoimentos da Home"
+                  >
+                    <span
+                      className={`block w-4 h-4 rounded-full bg-white transition-transform ${
+                        formShowInTestimonials ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>

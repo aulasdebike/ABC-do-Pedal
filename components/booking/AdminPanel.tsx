@@ -52,7 +52,8 @@ import {
   Package,
   FileCheck,
   Menu,
-  ChevronDown
+  ChevronDown,
+  Video
 } from 'lucide-react';
 import { AdminDashboardView } from './admin/AdminDashboardView';
 import { AdminStudentsView } from './admin/AdminStudentsView';
@@ -1711,6 +1712,7 @@ export function AdminPanel({ onExitAdmin }: AdminPanelProps) {
             badgeColor: 'bg-amber-500 text-slate-950 font-black animate-pulse'
           },
           { id: 'locais', label: 'Locais de aula', icon: MapPin },
+          { id: 'galeria', label: 'Galeria Viva & Mídias', icon: Video },
           { id: 'comunicacao', label: 'Comunicação', icon: MessageCircle },
           { id: 'relatorios', label: 'Relatórios', icon: DollarSign },
           { id: 'configuracoes', label: 'Configurações', icon: Settings2 }

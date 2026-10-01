@@ -3,3 +3,4 @@ export type { InteractiveGalleryProps } from './InteractiveGallery';
 export { GalleryPagination } from './GalleryPagination';
 export type { GalleryPaginationProps } from './GalleryPagination';
 export { GaleriaVivaView } from './GaleriaVivaView';
+export { HomeVideoTestimonials } from './HomeVideoTestimonials';
